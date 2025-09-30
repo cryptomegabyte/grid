@@ -132,7 +132,7 @@ make clean              # Clean artifacts
 Comprehensive technical documentation is available in the `docs/` folder:
 
 - **[Architecture](docs/architecture.md)** - System design and module structure
-- **[Autonomous Optimization](docs/AUTONOMOUS_OPTIMIZATION.md)** - Complete optimization guide
+- **[Autonomous Optimization](docs/autonomous_optimization.md)** - Complete optimization guide
 - **[Business Logic](docs/business-logic.md)** - Grid trading algorithm details
 - **[CLI Reference](docs/cli-reference.md)** - Complete command reference
 - **[Configuration](docs/configuration.md)** - Strategy files and parameters

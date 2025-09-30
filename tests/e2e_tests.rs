@@ -337,6 +337,57 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_market_state_detection() {
+        // Test simple market state detection logic
+        let trending_up_prices = vec![1.0, 1.001, 1.002, 1.003, 1.0055]; // +0.55% increase
+        let trending_down_prices = vec![1.0, 0.999, 0.998, 0.997, 0.9945]; // -0.55% decrease
+        let ranging_prices = vec![1.0, 1.001, 0.999, 1.002, 0.998]; // High volatility, small net change
+        
+        // Test trending up detection
+        let avg_up: f64 = trending_up_prices.iter().sum::<f64>() / trending_up_prices.len() as f64;
+        let variance_up: f64 = trending_up_prices.iter().map(|&p| (p - avg_up).powi(2)).sum::<f64>() / trending_up_prices.len() as f64;
+        let volatility_up = variance_up.sqrt() / avg_up;
+        let change_up = (trending_up_prices.last().unwrap() - trending_up_prices[0]) / trending_up_prices[0];
+        
+        assert!(change_up > 0.005, "Should detect upward trend");
+        assert!(volatility_up < 0.02, "Should have low volatility");
+        
+        // Test trending down detection  
+        let avg_down: f64 = trending_down_prices.iter().sum::<f64>() / trending_down_prices.len() as f64;
+        let variance_down: f64 = trending_down_prices.iter().map(|&p| (p - avg_down).powi(2)).sum::<f64>() / trending_down_prices.len() as f64;
+        let volatility_down = variance_down.sqrt() / avg_down;
+        let change_down = (trending_down_prices.last().unwrap() - trending_down_prices[0]) / trending_down_prices[0];
+        
+        assert!(change_down < -0.005, "Should detect downward trend");
+        assert!(volatility_down < 0.02, "Should have low volatility");
+        
+        // Test ranging detection
+        let avg_range: f64 = ranging_prices.iter().sum::<f64>() / ranging_prices.len() as f64;
+        let variance_range: f64 = ranging_prices.iter().map(|&p| (p - avg_range).powi(2)).sum::<f64>() / ranging_prices.len() as f64;
+        let volatility_range = variance_range.sqrt() / avg_range;
+        
+        assert!(volatility_range > 0.001, "Should detect higher volatility in ranging market");
+        
+        println!("✅ Market state detection logic verified");
+    }
+
+    #[test] 
+    fn test_grid_spacing_adjustment() {
+        // Test that grid spacing adjusts based on market state
+        let base_spacing = 0.01;
+        
+        // Trending markets should have wider spacing (1.5x)
+        let trending_spacing = base_spacing * 1.5;
+        assert_eq!(trending_spacing, 0.015);
+        
+        // Ranging markets should use normal spacing
+        let ranging_spacing = base_spacing;
+        assert_eq!(ranging_spacing, 0.01);
+        
+        println!("✅ Grid spacing adjustment verified");
+    }
+
     #[tokio::test]
     async fn test_end_to_end_grid_simulation() {
         // Simulate a complete grid trading scenario

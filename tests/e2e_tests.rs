@@ -1,11 +1,36 @@
 use grid_trading_bot::{
     GridTrader, MarketState, GridSignal, parse_kraken_ticker,
-    KRAKEN_WS_URL, TRADING_PAIR, GRID_LEVELS, GRID_SPACING
+    Config, TradingConfig, MarketConfig
 };
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use serde_json::{json, Value};
 use futures_util::{SinkExt, StreamExt};
 use std::time::Duration;
+
+// Test configuration constants
+const TEST_GRID_LEVELS: usize = 5;
+const TEST_GRID_SPACING: f64 = 0.01;
+const TEST_KRAKEN_WS_URL: &str = "wss://ws.kraken.com";
+const TEST_TRADING_PAIR: &str = "XRP/GBP";
+
+// Helper function to create test configurations
+fn create_test_config() -> Config {
+    Config {
+        trading: TradingConfig {
+            kraken_ws_url: TEST_KRAKEN_WS_URL.to_string(),
+            trading_pair: TEST_TRADING_PAIR.to_string(),
+            grid_levels: TEST_GRID_LEVELS,
+            grid_spacing: TEST_GRID_SPACING,
+            min_price_change: 0.001,
+        },
+        market: MarketConfig::default(),
+        logging: grid_trading_bot::LoggingConfig {
+            enable_price_logging: true,
+            enable_signal_logging: true,
+            enable_state_change_logging: true,
+        },
+    }
+}
 
 // Simple grid trader for testing
 #[derive(Debug, Clone)]
@@ -236,7 +261,7 @@ mod tests {
         let result = tokio::time::timeout(timeout, async {
             println!("🔄 Testing WebSocket connection to Kraken...");
             
-            let (ws_stream, response) = connect_async(KRAKEN_WS_URL).await?;
+            let (ws_stream, response) = connect_async(TEST_KRAKEN_WS_URL).await?;
             println!("✅ Connected! Response status: {}", response.status());
             
             let (mut ws_sender, mut ws_receiver) = ws_stream.split();
@@ -244,14 +269,14 @@ mod tests {
             // Subscribe to ticker
             let subscribe_message = json!({
                 "event": "subscribe",
-                "pair": [TRADING_PAIR],
+                "pair": [TEST_TRADING_PAIR],
                 "subscription": {
                     "name": "ticker"
                 }
             });
             
             ws_sender.send(Message::Text(subscribe_message.to_string())).await?;
-            println!("📡 Sent subscription request for {}", TRADING_PAIR);
+            println!("📡 Sent subscription request for {}", TEST_TRADING_PAIR);
             
             let mut message_count = 0;
             let mut subscription_confirmed = false;
@@ -374,7 +399,8 @@ mod tests {
     #[test]
     fn test_new_modular_grid_trader() {
         // Test the new modular GridTrader
-        let mut trader = GridTrader::new(GRID_SPACING);
+        let config = create_test_config();
+        let mut trader = GridTrader::new(config.trading.clone(), config.market.clone());
         
         // Initial state should be ranging with no levels
         assert_eq!(trader.current_price(), 0.0);
@@ -387,8 +413,8 @@ mod tests {
         let signal = trader.update_with_price(initial_price);
         assert_eq!(signal, GridSignal::None); // No signal on setup
         assert_eq!(trader.current_price(), initial_price);
-        assert_eq!(trader.buy_levels().len(), GRID_LEVELS);
-        assert_eq!(trader.sell_levels().len(), GRID_LEVELS);
+        assert_eq!(trader.buy_levels().len(), TEST_GRID_LEVELS);
+        assert_eq!(trader.sell_levels().len(), TEST_GRID_LEVELS);
         
         // Test price logging logic
         trader.update_logged_price(1.5000); // Set initial logged price

@@ -1,23 +1,26 @@
 // Market state detection and analysis
 
 use crate::types::MarketState;
+use crate::config::MarketConfig;
 
 pub struct MarketAnalyzer {
     price_history: Vec<f64>,
     current_state: MarketState,
+    config: MarketConfig,
 }
 
 impl Default for MarketAnalyzer {
     fn default() -> Self {
-        Self::new()
+        Self::new(MarketConfig::default())
     }
 }
 
 impl MarketAnalyzer {
-    pub fn new() -> Self {
+    pub fn new(config: MarketConfig) -> Self {
         Self {
             price_history: Vec::new(),
             current_state: MarketState::Ranging,
+            config,
         }
     }
 
@@ -29,8 +32,8 @@ impl MarketAnalyzer {
         // Add new price to history
         self.price_history.push(new_price);
         
-        // Keep only last 10 prices for analysis
-        if self.price_history.len() > 10 {
+        // Keep only configured number of prices for analysis
+        if self.price_history.len() > self.config.price_history_size {
             self.price_history.remove(0);
         }
         
@@ -63,10 +66,10 @@ impl MarketAnalyzer {
             .sum::<f64>() / self.price_history.len() as f64;
         let volatility = variance.sqrt() / avg_price; // Coefficient of variation
         
-        // Simple state detection logic
-        if price_change_pct > 0.005 && volatility < 0.02 {  // 0.5% increase, low volatility
+        // State detection logic using config thresholds
+        if price_change_pct > self.config.trend_threshold && volatility < self.config.volatility_threshold {
             MarketState::TrendingUp
-        } else if price_change_pct < -0.005 && volatility < 0.02 {  // 0.5% decrease, low volatility
+        } else if price_change_pct < -self.config.trend_threshold && volatility < self.config.volatility_threshold {
             MarketState::TrendingDown
         } else {
             MarketState::Ranging  // High volatility or small moves

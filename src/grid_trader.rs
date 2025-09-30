@@ -1,7 +1,8 @@
 // Grid trading logic and signal generation
 
-use crate::types::{GridSignal, MarketState, GRID_LEVELS};
+use crate::types::{GridSignal, MarketState};
 use crate::market_state::MarketAnalyzer;
+use crate::config::{TradingConfig, MarketConfig};
 
 pub struct GridTrader {
     current_price: f64,
@@ -9,20 +10,20 @@ pub struct GridTrader {
     sell_levels: Vec<f64>,
     last_triggered_level: Option<f64>,
     last_logged_price: f64,
-    base_grid_spacing: f64,
+    config: TradingConfig,
     market_analyzer: MarketAnalyzer,
 }
 
 impl GridTrader {
-    pub fn new(base_spacing: f64) -> Self {
+    pub fn new(trading_config: TradingConfig, market_config: MarketConfig) -> Self {
         Self {
             current_price: 0.0,
             buy_levels: Vec::new(),
             sell_levels: Vec::new(),
             last_triggered_level: None,
             last_logged_price: 0.0,
-            base_grid_spacing: base_spacing,
-            market_analyzer: MarketAnalyzer::new(),
+            config: trading_config,
+            market_analyzer: MarketAnalyzer::new(market_config),
         }
     }
 
@@ -63,13 +64,13 @@ impl GridTrader {
         let adjusted_spacing = self.get_adjusted_spacing();
         
         // Create buy levels below current price
-        for i in 1..=GRID_LEVELS {
+        for i in 1..=self.config.grid_levels {
             let buy_level = center_price - (i as f64 * adjusted_spacing);
             self.buy_levels.push(buy_level);
         }
         
         // Create sell levels above current price
-        for i in 1..=GRID_LEVELS {
+        for i in 1..=self.config.grid_levels {
             let sell_level = center_price + (i as f64 * adjusted_spacing);
             self.sell_levels.push(sell_level);
         }
@@ -118,11 +119,11 @@ impl GridTrader {
         match self.market_analyzer.current_state() {
             MarketState::TrendingUp | MarketState::TrendingDown => {
                 // Wider spacing in trending markets to avoid too many signals
-                self.base_grid_spacing * 1.5
+                self.config.grid_spacing * 1.5
             }
             MarketState::Ranging => {
                 // Normal spacing in ranging markets
-                self.base_grid_spacing
+                self.config.grid_spacing
             }
         }
     }

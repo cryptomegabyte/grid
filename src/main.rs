@@ -1,6 +1,6 @@
 use grid_trading_bot::{
     GridTrader, KrakenWebSocketClient, parse_kraken_ticker, handle_kraken_event,
-    KRAKEN_WS_URL, TRADING_PAIR, GRID_SPACING, MIN_PRICE_CHANGE
+    Config
 };
 use tokio_tungstenite::tungstenite::protocol::Message;
 use serde_json::Value;
@@ -8,17 +8,21 @@ use futures_util::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🚀 Starting Grid Trading Bot for {} pair", TRADING_PAIR);
-    println!("📊 Grid Configuration: £{:.4} base spacing", GRID_SPACING);
+    // Load configuration
+    let config = Config::load_or_create("config.toml")?;
     
-    // Initialize grid trader with Markov enhancement
-    let mut grid_trader = GridTrader::new(GRID_SPACING);
+    println!("🚀 Starting Grid Trading Bot for {} pair", config.trading.trading_pair);
+    println!("📊 Grid Configuration: {} levels, £{:.4} base spacing", 
+             config.trading.grid_levels, config.trading.grid_spacing);
+    
+    // Initialize grid trader with configuration
+    let mut grid_trader = GridTrader::new(config.trading.clone(), config.market.clone());
     
     // Connect to Kraken WebSocket
-    let mut ws_client = KrakenWebSocketClient::connect(KRAKEN_WS_URL).await?;
+    let mut ws_client = KrakenWebSocketClient::connect(&config.trading.kraken_ws_url).await?;
     
     // Subscribe to ticker data
-    ws_client.subscribe_to_ticker(TRADING_PAIR).await?;
+    ws_client.subscribe_to_ticker(&config.trading.trading_pair).await?;
     
     // Listen for messages
     while let Some(message) = ws_client.ws_receiver.next().await {
@@ -26,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Message::Text(text) => {
                 // Parse the JSON message
                 if let Ok(data) = serde_json::from_str::<Value>(&text) {
-                    handle_message(data, &mut grid_trader).await;
+                    handle_message(data, &mut grid_trader, &config).await;
                 }
             }
             Message::Close(_) => {
@@ -40,16 +44,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_message(data: Value, grid_trader: &mut GridTrader) {
+async fn handle_message(data: Value, grid_trader: &mut GridTrader, config: &Config) {
     // Try to parse ticker data
     if let Some(current_price) = parse_kraken_ticker(&data) {
         // Only log price if it changed significantly
-        if grid_trader.should_log_price(current_price, MIN_PRICE_CHANGE) {
-            println!("💰 Current {} price: £{:.4}", TRADING_PAIR, current_price);
+        if grid_trader.should_log_price(current_price, config.trading.min_price_change) {
+            if config.logging.enable_price_logging {
+                println!("💰 Current {} price: £{:.4}", config.trading.trading_pair, current_price);
+            }
             grid_trader.update_logged_price(current_price);
         }
         
-        // Update grid trader with new price (includes Markov analysis)
+        // Update grid trader with new price (includes market analysis)
         let _signal = grid_trader.update_with_price(current_price);
         // Signal handling could be added here for actual trading
     }

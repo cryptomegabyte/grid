@@ -1,0 +1,34 @@
+# Grid Trading Bot Configuration
+# Adjust these parameters to customize your trading strategy
+
+[trading]
+# Kraken WebSocket URL
+kraken_ws_url = "wss://ws.kraken.com"
+
+# Trading pair to monitor (format: "BASE/QUOTE")
+trading_pair = "XRP/GBP"
+
+# Number of grid levels above and below current price
+grid_levels = 5
+
+# Spacing between grid levels in quote currency (£0.01 for GBP pairs)
+grid_spacing = 0.01
+
+# Minimum price change required to log price updates (reduces spam)
+min_price_change = 0.001
+
+[market]
+# Percentage price change threshold to detect trending markets (0.5%)
+trend_threshold = 0.005
+
+# Volatility threshold for market state detection (2%)
+volatility_threshold = 0.02
+
+# Number of recent prices to keep for market analysis
+price_history_size = 10
+
+[logging]
+# Enable/disable different types of logging
+enable_price_logging = true
+enable_signal_logging = true
+enable_state_change_logging = true

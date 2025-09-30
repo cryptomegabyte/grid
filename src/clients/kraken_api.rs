@@ -6,7 +6,22 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime};
 use tokio::time::sleep;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use crate::backtesting::{OHLCData, HistoricalData};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TradingPair {
+    pub symbol: String,
+    pub alt_name: String,
+    pub ws_name: String,
+    pub base: String,
+    pub quote: String,
+    pub status: String,
+    pub pair_decimals: u32,
+    pub lot_decimals: u32,
+    pub tick_size: String,
+    pub ordermin: String,
+}
 
 #[derive(Debug)]
 pub struct KrakenHistoricalClient {
@@ -190,6 +205,27 @@ impl KrakenHistoricalClient {
         // In production, this would depend on the timeframe
         false
     }
+
+    /// Fetch all available GBP trading pairs
+    pub async fn get_gbp_pairs(&self) -> Result<Vec<TradingPair>, KrakenApiError> {
+        get_gbp_pairs().await
+    }
+
+    /// Get simplified list of GBP pair names for backtesting
+    pub async fn get_gbp_pair_names(&self) -> Result<Vec<String>, KrakenApiError> {
+        get_gbp_pair_names().await
+    }
+
+    /// Fetch historical data for all GBP pairs in parallel
+    pub async fn fetch_all_gbp_pairs(
+        &mut self,
+        interval: u32,
+        since: Option<DateTime<Utc>>,
+    ) -> Result<HashMap<String, HistoricalData>, KrakenApiError> {
+        let pair_names = self.get_gbp_pair_names().await?;
+        let pair_refs: Vec<&str> = pair_names.iter().map(|s| s.as_str()).collect();
+        self.fetch_multiple_pairs(&pair_refs, interval, since).await
+    }
 }
 
 impl Default for KrakenHistoricalClient {
@@ -328,6 +364,64 @@ pub async fn get_available_pairs() -> Result<Vec<String>, KrakenApiError> {
 
     let pairs: Vec<String> = result.keys().cloned().collect();
     Ok(pairs)
+}
+
+/// Get all GBP trading pairs with full information
+pub async fn get_gbp_pairs() -> Result<Vec<TradingPair>, KrakenApiError> {
+    let client = reqwest::Client::new();
+    let url = "https://api.kraken.com/0/public/AssetPairs";
+    
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| KrakenApiError::NetworkError(e.to_string()))?;
+
+    let json: Value = response
+        .json()
+        .await
+        .map_err(|e| KrakenApiError::ParseError(e.to_string()))?;
+
+    let result = json["result"].as_object()
+        .ok_or_else(|| KrakenApiError::ParseError("Missing result field".to_string()))?;
+
+    let mut gbp_pairs = Vec::new();
+    
+    for (symbol, data) in result {
+        // Filter for GBP pairs (quote currency is GBP)
+        if let Some(quote) = data["quote"].as_str() {
+            if quote == "ZGBP" {  // Kraken uses ZGBP internally for GBP
+                let pair = TradingPair {
+                    symbol: symbol.clone(),
+                    alt_name: data["altname"].as_str().unwrap_or(symbol).to_string(),
+                    ws_name: data["wsname"].as_str().unwrap_or("").to_string(),
+                    base: data["base"].as_str().unwrap_or("").to_string(),
+                    quote: data["quote"].as_str().unwrap_or("").to_string(),
+                    status: data["status"].as_str().unwrap_or("unknown").to_string(),
+                    pair_decimals: data["pair_decimals"].as_u64().unwrap_or(5) as u32,
+                    lot_decimals: data["lot_decimals"].as_u64().unwrap_or(8) as u32,
+                    tick_size: data["tick_size"].as_str().unwrap_or("0.00001").to_string(),
+                    ordermin: data["ordermin"].as_str().unwrap_or("0").to_string(),
+                };
+                
+                // Only include online pairs
+                if pair.status == "online" {
+                    gbp_pairs.push(pair);
+                }
+            }
+        }
+    }
+    
+    // Sort by base currency for consistent ordering
+    gbp_pairs.sort_by(|a, b| a.alt_name.cmp(&b.alt_name));
+    
+    Ok(gbp_pairs)
+}
+
+/// Get simplified list of GBP pair names for backtesting
+pub async fn get_gbp_pair_names() -> Result<Vec<String>, KrakenApiError> {
+    let pairs = get_gbp_pairs().await?;
+    Ok(pairs.into_iter().map(|p| p.alt_name).collect())
 }
 
 /// Utility function to normalize pair names (e.g., "XRPGBP" -> "XRP/GBP")

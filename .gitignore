@@ -15,3 +15,7 @@ Thumbs.db
 
 # Environment
 .env
+
+# Generated files
+strategies/
+portfolio_analysis.md

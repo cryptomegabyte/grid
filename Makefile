@@ -6,7 +6,7 @@ help:
 	@echo "  build       - Build the project"
 	@echo "  backtest    - Run backtesting system"
 	@echo "  trade       - Run live trading system"
-	@echo "  clean       - Clean build artifacts"
+	@echo "  clean       - Clean build artifacts, strategies, and reports"
 	@echo "  test        - Run tests"
 	@echo "  check       - Check code without building"
 	@echo "  fmt         - Format code"
@@ -46,9 +46,12 @@ backtest-release:
 trade-release:
 	cargo run --release --bin trade
 
-# Clean build artifacts
+# Clean build artifacts and generated files
 clean:
 	cargo clean
+	rm -rf strategies/
+	rm -f portfolio_analysis.md
+	@echo "Cleaned build artifacts, strategies, and reports"
 
 # Run tests
 test:

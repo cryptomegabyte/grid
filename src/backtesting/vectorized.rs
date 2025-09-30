@@ -36,7 +36,7 @@ impl VectorizedGridProcessor {
         let _chunk_size = 1000.min(prices.len() / rayon::current_num_threads().max(1));
         
         for i in 0..prices.len() {
-            let start_idx = if i >= window_size { i - window_size } else { 0 };
+            let start_idx = i.saturating_sub(window_size);
             let end_idx = (i + 1).min(prices.len());
             
             if end_idx - start_idx >= 5 { // Need minimum 5 points for state detection
@@ -160,8 +160,7 @@ impl VectorizedGridProcessor {
             let timestamp = data.timestamps[i];
             
             // Check buy levels (price crossing below) - using FIXED levels
-            for level_idx in 0..self.config.grid_levels {
-                let buy_level = fixed_buy_levels[level_idx];
+            for &buy_level in fixed_buy_levels.iter().take(self.config.grid_levels) {
                 
                 if current_price <= buy_level && last_triggered_level != Some(buy_level) {
                     signals.push(GridSignalEvent {
@@ -178,8 +177,7 @@ impl VectorizedGridProcessor {
             }
             
             // Check sell levels (price crossing above) - using FIXED levels
-            for level_idx in 0..self.config.grid_levels {
-                let sell_level = fixed_sell_levels[level_idx];
+            for &sell_level in fixed_sell_levels.iter().take(self.config.grid_levels) {
                 
                 if current_price >= sell_level && last_triggered_level != Some(sell_level) {
                     signals.push(GridSignalEvent {
@@ -312,6 +310,12 @@ pub fn simulate_multiple_strategies(
 #[derive(Debug, Clone)]
 pub struct ParameterGrid {
     pub configurations: Vec<BacktestConfig>,
+}
+
+impl Default for ParameterGrid {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ParameterGrid {

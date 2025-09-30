@@ -510,7 +510,7 @@ impl LiveTradingEngine {
                 ask: market_data.ask,
                 last: market_data.price,
                 volume: market_data.volume_24h,
-                timestamp: DateTime::from_timestamp(market_data.timestamp as i64, 0).unwrap_or_else(|| Utc::now()),
+                timestamp: DateTime::from_timestamp(market_data.timestamp as i64, 0).unwrap_or_else(Utc::now),
                 volatility: market_data.volatility,
                 high_24h: market_data.high_24h,
                 low_24h: market_data.low_24h,
@@ -905,10 +905,9 @@ impl LiveTradingEngine {
                             if price_data.last * 0.995 <= level {
                                 orders_to_place.push((pair.clone(), "buy".to_string(), level, strategy.available_capital * 0.05));
                             }
-                        } else if level > price_data.last && !self.has_pending_order_at_level(pair, level, "sell") {
-                            if price_data.last * 1.005 >= level && strategy.current_position > 0.0 {
+                        } else if level > price_data.last && !self.has_pending_order_at_level(pair, level, "sell")
+                            && price_data.last * 1.005 >= level && strategy.current_position > 0.0 {
                                 orders_to_place.push((pair.clone(), "sell".to_string(), level, strategy.current_position * 0.2));
-                            }
                         }
                     }
                 }
@@ -972,11 +971,10 @@ impl LiveTradingEngine {
         for (pair, strategy) in &self.strategies {
             if let Some(price_data) = self.current_prices.get(pair) {
                 for order in &strategy.active_orders {
-                    if matches!(order.status, OrderStatus::Pending) {
-                        if self.should_execute_order(order, price_data) {
+                    if matches!(order.status, OrderStatus::Pending)
+                        && self.should_execute_order(order, price_data) {
                             orders_to_process.push((pair.clone(), order.clone()));
                         }
-                    }
                 }
             }
         }

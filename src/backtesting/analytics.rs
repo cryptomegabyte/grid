@@ -48,7 +48,7 @@ impl PerformanceAnalyzer {
         let (winning_trades, losing_trades, avg_win_pct, avg_loss_pct, profit_factor) = 
             self.calculate_trading_stats(trades);
         
-        let win_rate_pct = if trades.len() > 0 {
+        let win_rate_pct = if !trades.is_empty() {
             winning_trades as f64 / trades.len() as f64 * 100.0
         } else {
             0.0
@@ -359,7 +359,7 @@ impl PerformanceAnalyzer {
                     position_size -= trade.quantity;
                     if position_size <= 0.0 {
                         if let Some(start) = position_start {
-                            total_duration = total_duration + (trade.timestamp - start);
+                            total_duration += trade.timestamp - start;
                         }
                         position_start = None;
                         position_size = 0.0;

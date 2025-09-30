@@ -385,17 +385,17 @@ async fn optimize_gbp_pairs(
     
     info!("🎯 Optimizing {} GBP pairs with {} strategy", pairs_to_optimize.len(), strategy);
     
-    // Create optimization configuration
-    let mut config = OptimizationConfig::default();
-    
-    // Configure strategy
-    config.optimization_strategy = match strategy.to_lowercase().as_str() {
-        "grid-search" => grid_trading_bot::optimization::OptimizationStrategy::GridSearch,
-        "genetic-algorithm" => grid_trading_bot::optimization::OptimizationStrategy::GeneticAlgorithm {
-            population: 50,
-            generations: iterations / 50,
+    // Create optimization configuration with strategy
+    let mut config = OptimizationConfig {
+        optimization_strategy: match strategy.to_lowercase().as_str() {
+            "grid-search" => grid_trading_bot::optimization::OptimizationStrategy::GridSearch,
+            "genetic-algorithm" => grid_trading_bot::optimization::OptimizationStrategy::GeneticAlgorithm {
+                population: 50,
+                generations: iterations / 50,
+            },
+            _ => grid_trading_bot::optimization::OptimizationStrategy::RandomSearch { iterations },
         },
-        _ => grid_trading_bot::optimization::OptimizationStrategy::RandomSearch { iterations },
+        ..Default::default()
     };
     
     // Configure timeframes if requested

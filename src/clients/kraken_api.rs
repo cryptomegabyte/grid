@@ -51,7 +51,7 @@ impl KrakenHistoricalClient {
         // Check cache first
         let cache_key = format!("{}_{}", pair, interval);
         if let Some(cached_data) = self.cache.get(&cache_key) {
-            if self.is_cache_valid(&cached_data, since) {
+            if self.is_cache_valid(cached_data, since) {
                 return Ok(cached_data.clone());
             }
         }

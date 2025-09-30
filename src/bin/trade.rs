@@ -1,11 +1,12 @@
-// Simple live trading demo
+// Live Trading Engine with Optimized Strategy Loading
 
 use clap::{Parser, Subcommand};
-// Removed unused import
 use serde::{Deserialize, Serialize};
 use std::fs;
 use tokio::time::{sleep, Duration};
 use tracing::{info, warn, error};
+use grid_trading_bot::core::live_trading::LiveTradingEngine;
+use chrono::Utc;
 
 #[derive(Parser)]
 #[command(name = "trade")]
@@ -17,13 +18,28 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Demo live trading simulation
+    /// Start live trading simulation with all optimized strategies
+    Start {
+        /// Initial capital in GBP
+        #[arg(short, long, default_value = "10000")]
+        capital: f64,
+        /// Strategies directory
+        #[arg(short, long, default_value = "optimized_strategies")]
+        strategies_dir: String,
+        /// Trading duration in hours (optional, runs indefinitely if not specified)
+        #[arg(long)]
+        hours: Option<f64>,
+        /// Trading duration in minutes (optional, alternative to hours)
+        #[arg(short, long)]
+        minutes: Option<f64>,
+    },
+    /// Demo single pair trading
     Demo {
         /// Trading pair
         #[arg(short, long, default_value = "XRPGBP")]
         pair: String,
     },
-    /// List available strategies
+    /// List available optimized strategies
     List,
 }
 
@@ -44,6 +60,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     
     match cli.command {
+        Commands::Start { capital, strategies_dir, hours, minutes } => {
+            let duration = calculate_trading_duration(hours, minutes);
+            if let Some(duration) = duration {
+                info!("🚀 Starting live trading simulation with £{:.2} for {:.1} hours", capital, duration.as_secs_f64() / 3600.0);
+            } else {
+                info!("🚀 Starting live trading simulation with £{:.2} (indefinite)", capital);
+            }
+            run_live_trading_simulation(capital, &strategies_dir, duration).await?;
+        }
         Commands::Demo { pair } => {
             info!("🎯 Starting demo live trading for {}", pair);
             run_demo_trading(&pair).await?;
@@ -52,6 +77,87 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             list_strategies().await?;
         }
     }
+    
+    Ok(())
+}
+
+fn calculate_trading_duration(hours: Option<f64>, minutes: Option<f64>) -> Option<Duration> {
+    match (hours, minutes) {
+        (Some(h), None) => Some(Duration::from_secs_f64(h * 3600.0)),
+        (None, Some(m)) => Some(Duration::from_secs_f64(m * 60.0)),
+        (Some(h), Some(_m)) => {
+            warn!("⚠️  Both hours and minutes specified, using hours ({:.1}h)", h);
+            Some(Duration::from_secs_f64(h * 3600.0))
+        }
+        (None, None) => None, // Run indefinitely
+    }
+}
+
+async fn run_live_trading_simulation(capital: f64, strategies_dir: &str, duration: Option<Duration>) -> Result<(), Box<dyn std::error::Error>> {
+    info!("🔧 Initializing live trading engine with £{:.2} capital", capital);
+    
+    // Create trading engine
+    let mut engine = LiveTradingEngine::new(capital);
+    
+    // Load all optimized strategies
+    let loaded_count = engine.load_optimized_strategies(strategies_dir)?;
+    
+    if loaded_count == 0 {
+        warn!("⚠️  No optimized strategies found in {}", strategies_dir);
+        warn!("💡 Run 'make backtest' first to generate optimized strategies");
+        return Ok(());
+    }
+    
+    info!("✅ Loaded {} optimized strategies", loaded_count);
+    
+    if let Some(duration) = duration {
+        info!("🎯 Starting live simulation for {:.1} hours - Press Ctrl+C to stop early", duration.as_secs_f64() / 3600.0);
+        info!("⏰ Trading will automatically stop at {}", (Utc::now() + chrono::Duration::from_std(duration).unwrap()).format("%H:%M:%S UTC"));
+    } else {
+        info!("🎯 Starting live simulation - Press Ctrl+C to stop");
+    }
+    
+    // Set up graceful shutdown with optional duration
+    let ctrl_c = tokio::signal::ctrl_c();
+    
+    let simulation_result = if let Some(duration) = duration {
+        // Run with time limit
+        tokio::select! {
+            result = engine.start_simulation_with_duration(duration) => result,
+            _ = ctrl_c => {
+                info!("🛑 Received shutdown signal (early stop)");
+                Ok(())
+            }
+        }
+    } else {
+        // Run indefinitely
+        tokio::select! {
+            result = engine.start_simulation() => result,
+            _ = ctrl_c => {
+                info!("🛑 Received shutdown signal");
+                Ok(())
+            }
+        }
+    };
+    
+    // Show final summary
+    match simulation_result {
+        Ok(_) => {
+            if duration.is_some() {
+                info!("⏰ Trading session completed after scheduled duration");
+            } else {
+                info!("✅ Simulation completed successfully");
+            }
+        }
+        Err(e) => error!("❌ Simulation error: {}", e),
+    }
+    
+    let summary = engine.get_portfolio_summary();
+    info!("📊 Final Portfolio Summary:");
+    info!("   💰 Total Value: £{:.2}", summary.total_value);
+    info!("   📈 Total Return: {:.2}%", summary.total_return);
+    info!("   🔄 Total Trades: {}", summary.total_trades);
+    info!("   💸 Total Fees: £{:.2}", summary.total_fees);
     
     Ok(())
 }
@@ -144,36 +250,71 @@ async fn run_demo_trading(pair: &str) -> Result<(), Box<dyn std::error::Error>> 
 }
 
 async fn list_strategies() -> Result<(), Box<dyn std::error::Error>> {
-    if !std::path::Path::new("strategies").exists() {
-        info!("❌ No strategies directory found");
-        info!("💡 Run 'cargo run --bin simple_backtest demo' to generate strategies");
-        return Ok(());
-    }
-    
-    info!("📋 Available Strategies:");
-    
-    let mut found_any = false;
-    for entry in fs::read_dir("strategies")? {
-        let entry = entry?;
-        let path = entry.path();
+    // Check optimized strategies first
+    if std::path::Path::new("optimized_strategies").exists() {
+        info!("📋 Optimized Strategies (Ready for Live Trading):");
         
-        if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            if let Ok(content) = fs::read_to_string(&path) {
-                if let Ok(strategy) = serde_json::from_str::<SimpleStrategy>(&content) {
-                    found_any = true;
-                    info!("🎯 {}", strategy.trading_pair);
-                    info!("   Expected Return: {:.2}%", strategy.expected_return);
-                    info!("   Grid Spacing: {:.1}%", strategy.grid_spacing * 100.0);
-                    info!("   Generated: {}", strategy.generated_at.format("%Y-%m-%d %H:%M"));
-                    info!("");
+        let mut found_any = false;
+        for entry in fs::read_dir("optimized_strategies")? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if let Ok(content) = fs::read_to_string(&path) {
+                    if let Ok(strategy) = serde_json::from_str::<grid_trading_bot::core::live_trading::OptimizedStrategy>(&content) {
+                        found_any = true;
+                        info!("🎯 {}", strategy.trading_pair);
+                        info!("   Expected Return: {:.2}%", strategy.expected_return * 100.0);
+                        info!("   Sharpe Ratio: {:.2}", strategy.sharpe_ratio);
+                        info!("   Max Drawdown: {:.2}%", strategy.max_drawdown * 100.0);
+                        info!("   Grid Levels: {}", strategy.grid_levels);
+                        info!("   Generated: {}", strategy.generated_at.format("%Y-%m-%d %H:%M"));
+                        info!("");
+                    }
                 }
             }
         }
+        
+        if !found_any {
+            warn!("⚠️  No optimized strategies found");
+        } else {
+            info!("✅ Found {} optimized strategies ready for live trading", 
+                fs::read_dir("optimized_strategies")?.count());
+            return Ok(());
+        }
     }
     
-    if !found_any {
-        info!("❌ No valid strategies found");
-        info!("💡 Run 'cargo run --bin simple_backtest demo' to generate strategies");
+    // Fallback to basic strategies
+    if std::path::Path::new("strategies").exists() {
+        info!("📋 Basic Strategies (Demo Only):");
+        
+        let mut found_any = false;
+        for entry in fs::read_dir("strategies")? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if let Ok(content) = fs::read_to_string(&path) {
+                    if let Ok(strategy) = serde_json::from_str::<SimpleStrategy>(&content) {
+                        found_any = true;
+                        info!("🎯 {}", strategy.trading_pair);
+                        info!("   Expected Return: {:.2}%", strategy.expected_return);
+                        info!("   Grid Spacing: {:.1}%", strategy.grid_spacing * 100.0);
+                        info!("   Generated: {}", strategy.generated_at.format("%Y-%m-%d %H:%M"));
+                        info!("");
+                    }
+                }
+            }
+        }
+        
+        if found_any {
+            warn!("💡 These are basic demo strategies. Run 'make backtest' to generate optimized strategies for live trading.");
+        }
+    }
+    
+    if !std::path::Path::new("optimized_strategies").exists() && !std::path::Path::new("strategies").exists() {
+        error!("❌ No strategies found");
+        info!("💡 Run 'make backtest' to generate optimized strategies");
     }
     
     Ok(())

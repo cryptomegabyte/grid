@@ -8,16 +8,8 @@ name = "backtest"
 path = "src/bin/backtest.rs"
 
 [[bin]]
-name = "trade" 
+name = "trade"
 path = "src/bin/trade.rs"
-
-[[bin]]
-name = "simple_backtest"
-path = "src/bin/simple_backtest.rs"
-
-[[bin]]
-name = "simple_trade"
-path = "src/bin/simple_trade.rs"
 
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }

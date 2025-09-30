@@ -1,7 +1,7 @@
 // Grid trading logic and signal generation
 
-use crate::types::{GridSignal, MarketState};
-use crate::market_state::MarketAnalyzer;
+use crate::core::types::{GridSignal, MarketState};
+use crate::core::market_state::MarketAnalyzer;
 use crate::config::{TradingConfig, MarketConfig};
 
 pub struct GridTrader {

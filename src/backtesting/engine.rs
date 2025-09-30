@@ -4,13 +4,13 @@ use crate::backtesting::{
     BacktestConfig, BacktestResult, GridStatistics, 
     HistoricalData, Trade, TradeType
 };
-use crate::backtesting::kraken_api::{KrakenHistoricalClient, KrakenApiError};
+use crate::clients::kraken_api::{KrakenHistoricalClient, KrakenApiError};
 use crate::backtesting::vectorized::{
     VectorizedGridProcessor, GridSignalEvent, ParameterGrid, StrategyResult,
     simulate_multiple_strategies, TradeCostAnalysis
 };
 use crate::backtesting::analytics::PerformanceAnalyzer;
-use crate::types::MarketState;
+use crate::core::types::MarketState;
 use chrono::{DateTime, Utc};
 use ndarray::Array1;
 // use rayon::prelude::*; // Unused for now

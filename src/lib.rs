@@ -1,26 +1,25 @@
 // Grid Trading Bot Library
 // 
-// A modular cryptocurrency grid trading bot with Markov chain enhancements
+// A modular cryptocurrency grid trading bot with vectorized backtesting and Markov chain analysis
 
-pub mod types;
-pub mod market_state;
-pub mod grid_trader;
-pub mod websocket_client;
+pub mod core;
+pub mod clients;
 pub mod config;
 pub mod backtesting;
 
-// Re-export commonly used types for convenience
-pub use types::{MarketState, GridSignal};
-pub use market_state::MarketAnalyzer;
-pub use grid_trader::GridTrader;
-pub use websocket_client::{KrakenWebSocketClient, parse_kraken_ticker, handle_kraken_event};
+// Re-export core trading types
+pub use core::{MarketState, GridSignal, GridTrader, MarketAnalyzer};
+
+// Re-export client types
+pub use clients::{KrakenWebSocketClient, KrakenHistoricalClient};
+
+// Re-export configuration
 pub use config::{Config, TradingConfig, MarketConfig, LoggingConfig, ConfigError};
 
 // Re-export backtesting components
 pub use backtesting::{
     BacktestConfig, BacktestResult, HistoricalData, Trade, TradeType, PerformanceMetrics,
     engine::{BacktestingEngine, BacktestBuilder, BacktestError},
-    kraken_api::{KrakenHistoricalClient, KrakenApiError},
     vectorized::{VectorizedGridProcessor, ParameterGrid, StrategyResult},
     analytics::PerformanceAnalyzer,
     markov::{MarkovChainAnalyzer, MarketStatePrediction},

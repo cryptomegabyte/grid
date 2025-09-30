@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use ndarray::Array2;
-use crate::types::MarketState;
+use crate::core::types::MarketState;
 use crate::backtesting::BacktestConfig;
 use serde::{Serialize, Deserialize};
 

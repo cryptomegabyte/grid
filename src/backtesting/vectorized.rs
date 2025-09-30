@@ -2,7 +2,7 @@
 
 use ndarray::{Array1, Array2, s};
 use rayon::prelude::*;
-use crate::types::MarketState;
+use crate::core::types::MarketState;
 use crate::backtesting::{HistoricalData, BacktestConfig, TradeType};
 use crate::backtesting::markov::MarkovChainAnalyzer;
 

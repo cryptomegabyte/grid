@@ -1,7 +1,6 @@
 // Backtesting data structures and types
 
 pub mod engine;
-pub mod kraken_api;
 pub mod vectorized;
 pub mod analytics;
 pub mod markov;
@@ -10,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use ndarray::Array1;
 use uuid::Uuid;
-use crate::types::MarketState;
+use crate::core::types::MarketState;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OHLCData {

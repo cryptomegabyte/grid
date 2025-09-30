@@ -1,6 +1,6 @@
 // Market state detection and analysis
 
-use crate::types::MarketState;
+use crate::core::types::MarketState;
 use crate::config::MarketConfig;
 
 pub struct MarketAnalyzer {

@@ -214,6 +214,9 @@ impl BacktestingEngine {
         let mut trades = Vec::new();
         let mut position_size = 0.0;
         let mut available_capital = self.config.initial_capital;
+        
+        // Track buy orders for proper PnL calculation (FIFO queue)
+        let mut buy_positions: Vec<(f64, f64, f64)> = Vec::new(); // (price, quantity, total_cost_including_fees)
 
         let mut rejected_risk = 0;
         let mut rejected_size = 0;
@@ -233,25 +236,28 @@ impl BacktestingEngine {
                 continue; // Skip trades below minimum size
             }
 
-            // Create trade
-            let trade = Trade::new(
-                signal.signal_type,
-                signal.grid_level,
-                cost_analysis.execution_price,
-                trade_quantity,
-                signal.timestamp,
-                signal.grid_level,
-                cost_analysis.fees,
-                cost_analysis.slippage_cost,
-            );
-
-            // Update portfolio state
+            // Update portfolio state and create trade with proper PnL
             match signal.signal_type {
                 TradeType::Buy => {
                     let total_cost = cost_analysis.execution_price * trade_quantity + cost_analysis.total_cost;
                     if available_capital >= total_cost {
                         available_capital -= total_cost;
                         position_size += trade_quantity;
+                        
+                        // Record buy position for later PnL calculation
+                        buy_positions.push((cost_analysis.execution_price, trade_quantity, total_cost));
+                        
+                        // Create buy trade with zero PnL (will be calculated when sold)
+                        let trade = Trade::new(
+                            signal.signal_type,
+                            signal.grid_level,
+                            cost_analysis.execution_price,
+                            trade_quantity,
+                            signal.timestamp,
+                            signal.grid_level,
+                            cost_analysis.fees,
+                            cost_analysis.slippage_cost,
+                        );
                         trades.push(trade);
                     } else {
                         rejected_capital += 1;
@@ -259,14 +265,58 @@ impl BacktestingEngine {
                 }
                 TradeType::Sell => {
                     let sellable_quantity = trade_quantity.min(position_size);
-                    if sellable_quantity > 0.0 {
+                    if sellable_quantity > 0.0 && !buy_positions.is_empty() {
                         let proceeds = cost_analysis.execution_price * sellable_quantity - cost_analysis.total_cost;
                         available_capital += proceeds;
                         position_size -= sellable_quantity;
                         
-                        let mut adjusted_trade = trade;
-                        adjusted_trade.quantity = sellable_quantity;
-                        trades.push(adjusted_trade);
+                        // Calculate proper PnL by matching against buy positions (FIFO)
+                        let mut remaining_to_sell = sellable_quantity;
+                        let mut total_buy_cost = 0.0;
+                        let sell_revenue = cost_analysis.execution_price * sellable_quantity;
+                        
+                        while remaining_to_sell > 0.0 && !buy_positions.is_empty() {
+                            let (buy_price, buy_quantity, buy_total_cost) = buy_positions.remove(0);
+                            
+                            if remaining_to_sell >= buy_quantity {
+                                // Sell entire buy position
+                                total_buy_cost += buy_total_cost;
+                                remaining_to_sell -= buy_quantity;
+                            } else {
+                                // Partial sell - split the buy position
+                                let partial_cost = buy_total_cost * (remaining_to_sell / buy_quantity);
+                                total_buy_cost += partial_cost;
+                                
+                                // Put remainder back in queue
+                                let remaining_quantity = buy_quantity - remaining_to_sell;
+                                let remaining_cost = buy_total_cost - partial_cost;
+                                buy_positions.insert(0, (buy_price, remaining_quantity, remaining_cost));
+                                
+                                remaining_to_sell = 0.0;
+                            }
+                        }
+                        
+                        // Calculate net PnL: revenue - buy_cost - sell_fees
+                        let gross_pnl = sell_revenue - total_buy_cost;
+                        let net_pnl = gross_pnl - cost_analysis.fees - cost_analysis.slippage_cost;
+                        
+                        // Create sell trade with calculated PnL
+                        let mut trade = Trade::new(
+                            signal.signal_type,
+                            signal.grid_level,
+                            cost_analysis.execution_price,
+                            sellable_quantity,
+                            signal.timestamp,
+                            signal.grid_level,
+                            cost_analysis.fees,
+                            cost_analysis.slippage_cost,
+                        );
+                        
+                        // Override the PnL with our calculated value
+                        trade.gross_pnl = gross_pnl;
+                        trade.net_pnl = net_pnl;
+                        
+                        trades.push(trade);
                     }
                 }
             }
@@ -281,6 +331,15 @@ impl BacktestingEngine {
                      available_capital, self.config.risk_config.max_position_size_pct,
                      available_capital * self.config.risk_config.max_position_size_pct);
             println!("   - Min order size: {:.2}", self.config.trading_costs.min_order_size);
+        } else if !trades.is_empty() {
+            let buy_trades = trades.iter().filter(|t| t.trade_type == TradeType::Buy).count();
+            let sell_trades = trades.iter().filter(|t| t.trade_type == TradeType::Sell).count();
+            let profitable_trades = trades.iter().filter(|t| t.net_pnl > 0.0).count();
+            println!("✅ Portfolio simulation completed:");
+            println!("   - Buy trades: {}, Sell trades: {}", buy_trades, sell_trades);
+            println!("   - Profitable trades: {}/{} ({:.1}%)", 
+                     profitable_trades, sell_trades.max(1), 
+                     (profitable_trades as f64 / sell_trades.max(1) as f64) * 100.0);
         }
 
         trades
@@ -299,7 +358,9 @@ impl BacktestingEngine {
                 // Check if we have enough capital and won't exceed position limits
                 let trade_quantity = self.calculate_position_size(signal, available_capital);
                 let trade_value = signal.price * trade_quantity;
-                let result = available_capital >= trade_value && (position_value + trade_value) <= max_position_value;
+                // Use a small epsilon for floating-point comparison to avoid precision errors
+                let epsilon = 0.01; // 1 penny tolerance
+                let result = available_capital >= trade_value && (position_value + trade_value) <= max_position_value + epsilon;
                 
                 // Debug first failed trade
                 if !result && position_size == 0.0 {

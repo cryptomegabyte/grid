@@ -21,7 +21,7 @@ enum Commands {
     /// Start live trading simulation with all optimized strategies
     Start {
         /// Initial capital in GBP
-        #[arg(short, long, default_value = "10000")]
+        #[arg(short, long, default_value = "500")]
         capital: f64,
         /// Strategies directory
         #[arg(short, long, default_value = "optimized_strategies")]

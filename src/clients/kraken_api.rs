@@ -125,16 +125,27 @@ impl KrakenHistoricalClient {
                 }
             }
             
-            // Small delay between requests to be respectful
-            sleep(Duration::from_millis(100)).await;
+            // Longer delay between requests to avoid rate limiting during optimization
+            sleep(Duration::from_millis(500)).await;
         }
         
         Ok(results)
     }
 
-    fn parse_ohlc_response(&self, json: Value, _pair: &str) -> Result<Vec<OHLCData>, KrakenApiError> {
+    fn parse_ohlc_response(&self, json: Value, pair: &str) -> Result<Vec<OHLCData>, KrakenApiError> {
+        // Check for Kraken API errors first
+        if let Some(errors) = json["error"].as_array() {
+            if !errors.is_empty() {
+                let error_msg = errors.iter()
+                    .filter_map(|e| e.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                return Err(KrakenApiError::ParseError(format!("Kraken API error for {}: {}", pair, error_msg)));
+            }
+        }
+
         let result = json["result"].as_object()
-            .ok_or_else(|| KrakenApiError::ParseError("Missing result field".to_string()))?;
+            .ok_or_else(|| KrakenApiError::ParseError(format!("Missing result field for pair {}", pair)))?;
 
         // Kraken returns pair data with normalized pair names
         let pair_data = result.values().next()
@@ -359,6 +370,17 @@ pub async fn get_available_pairs() -> Result<Vec<String>, KrakenApiError> {
         .await
         .map_err(|e| KrakenApiError::ParseError(e.to_string()))?;
 
+    // Check for Kraken API errors first
+    if let Some(errors) = json["error"].as_array() {
+        if !errors.is_empty() {
+            let error_msg = errors.iter()
+                .filter_map(|e| e.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(KrakenApiError::ParseError(format!("Kraken API error: {}", error_msg)));
+        }
+    }
+
     let result = json["result"].as_object()
         .ok_or_else(|| KrakenApiError::ParseError("Missing result field".to_string()))?;
 
@@ -381,6 +403,17 @@ pub async fn get_gbp_pairs() -> Result<Vec<TradingPair>, KrakenApiError> {
         .json()
         .await
         .map_err(|e| KrakenApiError::ParseError(e.to_string()))?;
+
+    // Check for Kraken API errors first
+    if let Some(errors) = json["error"].as_array() {
+        if !errors.is_empty() {
+            let error_msg = errors.iter()
+                .filter_map(|e| e.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(KrakenApiError::ParseError(format!("Kraken API error: {}", error_msg)));
+        }
+    }
 
     let result = json["result"].as_object()
         .ok_or_else(|| KrakenApiError::ParseError("Missing result field".to_string()))?;

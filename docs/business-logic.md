@@ -1,6 +1,61 @@
 # Business Logic
 
-## 🎯 Grid Trading Strategy
+## 🧠 Autonomous Optimization Strategy
+
+### Intelligent Parameter Discovery
+
+The autonomous optimization system transforms traditional manual parameter tuning into an intelligent, data-driven discovery process:
+
+```rust
+// Multi-dimensional parameter optimization
+pub struct OptimizationConfig {
+    pub grid_levels: ParameterRange<usize>,      // 5-20 levels
+    pub grid_spacing: ParameterRange<f64>,       // 0.001-0.100 (0.1%-10%)
+    pub timeframes: Vec<String>,                 // ["15m", "30m", "1h", "2h", "4h", "1d"]
+    pub risk_management: RiskManagementConfig,   // Dynamic risk parameters
+}
+```
+
+### Advanced Grid Strategies
+
+The system automatically evaluates multiple sophisticated grid configurations:
+
+**1. Fibonacci Grid Strategy:**
+```rust
+// Golden ratio spacing for natural support/resistance
+spacing_ratios = [1.0, 1.618, 2.618, 4.236, 6.854, ...]
+levels = base_price * (1.0 ± spacing * ratio)
+```
+
+**2. Volatility-Adjusted Grid:**
+```rust
+// Dynamic spacing based on market volatility
+volatility = calculate_volatility(price_history, period=20)
+adaptive_spacing = base_spacing * (1.0 + volatility_factor)
+```
+
+**3. Trend-Following Grid:**
+```rust
+// Asymmetric grids that adapt to market direction
+trend_strength = calculate_trend_strength(price_history)
+if trend_strength > 0.6 {
+    buy_levels *= 0.8;  // Fewer buy levels in uptrend
+    sell_levels *= 1.2; // More sell levels in uptrend
+}
+```
+
+### Multi-Objective Optimization
+
+The system balances multiple objectives simultaneously:
+
+```rust
+composite_score = 0.4 * normalize_return(total_return) +
+                 0.3 * normalize_sharpe(sharpe_ratio) +
+                 0.2 * normalize_drawdown(max_drawdown) +
+                 0.1 * normalize_trades(trade_frequency)
+```
+
+## 🎯 Traditional Grid Trading Strategy
 
 ### Core Concept
 

@@ -6,6 +6,7 @@ pub mod core;
 pub mod clients;
 pub mod config;
 pub mod backtesting;
+pub mod optimization;
 
 // Re-export core trading types
 pub use core::{MarketState, GridSignal, GridTrader, MarketAnalyzer};
@@ -23,4 +24,12 @@ pub use backtesting::{
     vectorized::{VectorizedGridProcessor, ParameterGrid, StrategyResult},
     analytics::PerformanceAnalyzer,
     markov::{MarkovChainAnalyzer, MarketStatePrediction},
+};
+
+// Re-export optimization components
+pub use optimization::{
+    OptimizationConfig, ParameterSet, OptimizationResult, ParameterOptimizer,
+    parameter_search::{ParameterSearchEngine, SearchStrategy},
+    grid_optimizer::{GridOptimizer, GridStrategy},
+    risk_optimizer::{RiskOptimizer, RiskModel, RiskMetrics},
 };

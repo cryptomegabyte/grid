@@ -4,10 +4,62 @@
 
 The Grid Trading Bot provides two main executables for different workflows:
 
-- **`backtest`** - Research and strategy development
+- **`backtest`** - Research, strategy development, and autonomous optimization
 - **`trade`** - Live trading execution
 
-## 📊 Backtest Commands
+## 🧠 Autonomous Optimization Commands
+
+### Optimize All GBP Pairs
+```bash
+cargo run --bin backtest -- optimize-gbp [OPTIONS]
+```
+
+**Options:**
+- `-l, --limit <LIMIT>` - Maximum number of pairs to optimize (default: all)
+- `-s, --strategy <STRATEGY>` - Optimization strategy: grid-search, random-search, genetic-algorithm [default: random-search]
+- `-i, --iterations <ITERATIONS>` - Number of iterations for optimization [default: 100]
+- `-t, --timeframes` - Include timeframe optimization
+- `-r, --risk-optimization` - Include risk management optimization
+- `-R, --report` - Generate comprehensive optimization report
+
+**Examples:**
+```bash
+# Basic optimization of all GBP pairs
+cargo run --bin backtest -- optimize-gbp
+
+# Advanced genetic algorithm optimization
+cargo run --bin backtest -- optimize-gbp --strategy genetic-algorithm --timeframes --risk-optimization --iterations 500
+
+# Limited optimization with reporting
+cargo run --bin backtest -- optimize-gbp --limit 5 --report
+```
+
+### Optimize Single Pair
+```bash
+cargo run --bin backtest -- optimize-pair --pair <PAIR> [OPTIONS]
+```
+
+**Required:**
+- `-p, --pair <PAIR>` - Trading pair to optimize
+
+**Options:**
+- `-s, --strategy <STRATEGY>` - Optimization strategy [default: random-search]
+- `-i, --iterations <ITERATIONS>` - Number of iterations [default: 200]
+- `-c, --comprehensive` - Include all optimization types
+
+**Examples:**
+```bash
+# Basic single pair optimization
+cargo run --bin backtest -- optimize-pair --pair GBPUSD
+
+# Comprehensive optimization
+cargo run --bin backtest -- optimize-pair --pair EURGBP --comprehensive
+
+# Advanced genetic algorithm
+cargo run --bin backtest -- optimize-pair --pair GBPJPY --strategy genetic-algorithm --iterations 1000
+```
+
+## 📊 Traditional Backtest Commands
 
 ### Demo Backtest
 ```bash

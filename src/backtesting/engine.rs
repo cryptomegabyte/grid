@@ -215,15 +215,21 @@ impl BacktestingEngine {
         let mut position_size = 0.0;
         let mut available_capital = self.config.initial_capital;
 
+        let mut rejected_risk = 0;
+        let mut rejected_size = 0;
+        let mut rejected_capital = 0;
+        
         for (signal, cost_analysis) in signals.iter().zip(cost_analyses.iter()) {
             // Risk management checks
             if !self.should_execute_trade(signal, available_capital, position_size) {
+                rejected_risk += 1;
                 continue;
             }
 
             let trade_quantity = self.calculate_position_size(signal, available_capital);
             
             if trade_quantity < self.config.trading_costs.min_order_size {
+                rejected_size += 1;
                 continue; // Skip trades below minimum size
             }
 
@@ -247,6 +253,8 @@ impl BacktestingEngine {
                         available_capital -= total_cost;
                         position_size += trade_quantity;
                         trades.push(trade);
+                    } else {
+                        rejected_capital += 1;
                     }
                 }
                 TradeType::Sell => {
@@ -264,6 +272,17 @@ impl BacktestingEngine {
             }
         }
 
+        if trades.is_empty() && !signals.is_empty() {
+            println!("⚠️  No trades executed from {} signals:", signals.len());
+            println!("   - Rejected by risk management: {}", rejected_risk);
+            println!("   - Rejected due to small size: {}", rejected_size);
+            println!("   - Rejected due to insufficient capital: {}", rejected_capital);
+            println!("   - Position size calculation: {:.6} * {:.4} = {:.6}", 
+                     available_capital, self.config.risk_config.max_position_size_pct,
+                     available_capital * self.config.risk_config.max_position_size_pct);
+            println!("   - Min order size: {:.2}", self.config.trading_costs.min_order_size);
+        }
+
         trades
     }
 
@@ -278,8 +297,26 @@ impl BacktestingEngine {
         match signal.signal_type {
             TradeType::Buy => {
                 // Check if we have enough capital and won't exceed position limits
-                let trade_value = signal.price * self.calculate_position_size(signal, available_capital);
-                available_capital >= trade_value && (position_value + trade_value) <= max_position_value
+                let trade_quantity = self.calculate_position_size(signal, available_capital);
+                let trade_value = signal.price * trade_quantity;
+                let result = available_capital >= trade_value && (position_value + trade_value) <= max_position_value;
+                
+                // Debug first failed trade
+                if !result && position_size == 0.0 {
+                    println!("⚠️  Trade rejected (first trade debug):");
+                    println!("   Signal: {:?} at price £{:.4}", signal.signal_type, signal.price);
+                    println!("   Available capital: £{:.2}", available_capital);
+                    println!("   Position size: {:.4} units", position_size);
+                    println!("   Position value: £{:.2}", position_value);
+                    println!("   Total portfolio: £{:.2}", total_portfolio_value);
+                    println!("   Max position value: £{:.2}", max_position_value);
+                    println!("   Trade quantity: {:.4} units", trade_quantity);
+                    println!("   Trade value: £{:.2}", trade_value);
+                    println!("   Capital check: {} >= {} = {}", available_capital, trade_value, available_capital >= trade_value);
+                    println!("   Position check: {} <= {} = {}", position_value + trade_value, max_position_value, (position_value + trade_value) <= max_position_value);
+                }
+                
+                result
             }
             TradeType::Sell => {
                 // Can only sell if we have a position
@@ -288,10 +325,12 @@ impl BacktestingEngine {
         }
     }
 
-    fn calculate_position_size(&self, _signal: &GridSignalEvent, available_capital: f64) -> f64 {
-        // Simple fixed percentage position sizing
-        // In production, this could be much more sophisticated
-        available_capital * self.config.risk_config.max_position_size_pct / 100.0
+    fn calculate_position_size(&self, signal: &GridSignalEvent, available_capital: f64) -> f64 {
+        // Calculate position size as percentage of available capital
+        let position_value = available_capital * self.config.risk_config.max_position_size_pct;
+        
+        // Convert dollar amount to quantity (number of units)
+        position_value / signal.price
     }
 
     fn calculate_grid_statistics(

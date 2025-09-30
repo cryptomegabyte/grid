@@ -2,19 +2,39 @@
 
 ## 🏗️ Overall Architecture
 
-The Grid Trading Bot follows a **modular, pipeline-based architecture** designed for professional trading environments:
+The Grid Trading Bot follows a **modular, pipeline-based architecture** with autonomous optimization capabilities:
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Data Layer    │    │  Strategy Layer  │    │ Execution Layer │
-│                 │    │                  │    │                 │
-│ • Kraken API    │───▶│ • Backtesting    │───▶│ • Live Trading  │
-│ • WebSocket     │    │ • Optimization   │    │ • Risk Mgmt     │
-│ • Market Data   │    │ • Analytics      │    │ • Monitoring    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Data Layer    │    │ Optimization    │    │  Strategy Layer  │    │ Execution Layer │
+│                 │    │     Layer       │    │                  │    │                 │
+│ • Kraken API    │───▶│ • Auto Discovery│───▶│ • Backtesting    │───▶│ • Live Trading  │
+│ • WebSocket     │    │ • Genetic Alg   │    │ • Analytics      │    │ • Risk Mgmt     │
+│ • Market Data   │    │ • Risk Optimizer│    │ • Grid Strategies│    │ • Monitoring    │
+└─────────────────┘    └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
 ## 📁 Module Structure
+
+### Optimization Modules (`src/optimization/`)
+
+**Purpose:** Autonomous parameter discovery and strategy optimization
+
+```rust
+// Autonomous optimization framework
+optimization/
+├── mod.rs              // Core optimization logic and config
+├── parameter_search.rs // Search algorithms (genetic, random, grid)
+├── grid_optimizer.rs   // Advanced grid strategy optimization
+└── risk_optimizer.rs   // Risk management optimization
+```
+
+**Key Responsibilities:**
+- Multi-pair parameter scanning and optimization
+- Genetic algorithm evolution for parameter discovery
+- Risk-aware position sizing optimization
+- Advanced grid strategies (Fibonacci, volatility-adjusted)
+- Bayesian optimization for efficient parameter search
 
 ### Core Modules (`src/core/`)
 

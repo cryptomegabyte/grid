@@ -4,9 +4,12 @@
 help:
 	@echo "Available commands:"
 	@echo "  build       - Build the project"
+	@echo "  optimize    - Run autonomous GBP pair optimization"
+	@echo "  optimize-advanced - Run advanced genetic algorithm optimization"
+	@echo "  optimize-single - Optimize specific pair (use PAIR=GBPUSD)"
 	@echo "  backtest    - Run backtesting system"
 	@echo "  trade       - Run live trading system"
-	@echo "  clean       - Clean build artifacts, strategies, and reports"
+	@echo "  clean       - Clean build artifacts, strategies, optimization results, and reports"
 	@echo "  test        - Run tests"
 	@echo "  check       - Check code without building"
 	@echo "  fmt         - Format code"
@@ -17,6 +20,19 @@ help:
 # Build the project
 build:
 	cargo build
+
+# Autonomous optimization commands
+optimize:
+	cargo run --bin backtest -- optimize-gbp
+
+optimize-advanced:
+	cargo run --bin backtest -- optimize-gbp --strategy genetic-algorithm --timeframes --risk-optimization --iterations 200
+
+optimize-single:
+	cargo run --bin backtest -- optimize-pair --pair $(PAIR) --comprehensive
+
+optimize-report:
+	cargo run --bin backtest -- optimize-gbp --strategy genetic-algorithm --report --iterations 500
 
 # Run backtesting system
 backtest:
@@ -50,8 +66,11 @@ trade-release:
 clean:
 	cargo clean
 	rm -rf strategies/
+	rm -rf optimized_strategies/
 	rm -f portfolio_analysis.md
-	@echo "Cleaned build artifacts, strategies, and reports"
+	rm -f optimization_report.md
+	rm -f *_optimization_analysis.md
+	@echo "Cleaned build artifacts, strategies, optimization results, and reports"
 
 # Run tests
 test:

@@ -41,6 +41,22 @@ clean:
 test:
 	cargo test
 
+# Run tests with output
+test-verbose:
+	cargo test -- --nocapture
+
+# Run only unit tests (from main.rs)
+test-unit:
+	cargo test --bin grid-trading-bot
+
+# Run only e2e tests  
+test-e2e:
+	cargo test --test e2e_tests
+
+# Run e2e tests with output
+test-e2e-verbose:
+	cargo test --test e2e_tests -- --nocapture
+
 # Check code without building
 check:
 	cargo check

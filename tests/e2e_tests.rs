@@ -1,10 +1,11 @@
+use grid_trading_bot::{
+    GridTrader, MarketState, GridSignal, KrakenWebSocketClient, parse_kraken_ticker,
+    KRAKEN_WS_URL, TRADING_PAIR, GRID_LEVELS, GRID_SPACING
+};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use serde_json::{json, Value};
 use futures_util::{SinkExt, StreamExt};
 use std::time::Duration;
-
-const KRAKEN_WS_URL: &str = "wss://ws.kraken.com";
-const TRADING_PAIR: &str = "XRP/GBP";
 
 // Simple grid trader for testing
 #[derive(Debug, Clone)]
@@ -13,13 +14,6 @@ struct TestGridTrader {
     pub buy_levels: Vec<f64>,
     pub sell_levels: Vec<f64>,
     pub signals_received: Vec<String>,
-}
-
-#[derive(Debug, PartialEq)]
-enum GridSignal {
-    Buy(f64),
-    Sell(f64),
-    None,
 }
 
 impl TestGridTrader {
@@ -77,18 +71,7 @@ impl TestGridTrader {
     }
 }
 
-fn parse_kraken_ticker(data: &Value) -> Option<f64> {
-    if let Some(channel_name) = data.get(2).and_then(|v| v.as_str()) {
-        if channel_name == "ticker" {
-            if let Some(ticker_data) = data.get(1) {
-                if let Some(price_str) = ticker_data.get("c").and_then(|c| c.get(0)).and_then(|p| p.as_str()) {
-                    return price_str.parse::<f64>().ok();
-                }
-            }
-        }
-    }
-    None
-}
+// parse_kraken_ticker is now imported from the library
 
 #[cfg(test)]
 mod tests {
@@ -372,7 +355,7 @@ mod tests {
         println!("✅ Market state detection logic verified");
     }
 
-    #[test] 
+    #[test]
     fn test_grid_spacing_adjustment() {
         // Test that grid spacing adjusts based on market state
         let base_spacing = 0.01;
@@ -388,7 +371,32 @@ mod tests {
         println!("✅ Grid spacing adjustment verified");
     }
 
-    #[tokio::test]
+    #[test]
+    fn test_new_modular_grid_trader() {
+        // Test the new modular GridTrader
+        let mut trader = GridTrader::new(GRID_SPACING);
+        
+        // Initial state should be ranging with no levels
+        assert_eq!(trader.current_price(), 0.0);
+        assert_eq!(trader.buy_levels().len(), 0);
+        assert_eq!(trader.sell_levels().len(), 0);
+        assert_eq!(trader.market_state(), MarketState::Ranging);
+        
+        // Update with first price should set up grid
+        let initial_price = 1.5000;
+        let signal = trader.update_with_price(initial_price);
+        assert_eq!(signal, GridSignal::None); // No signal on setup
+        assert_eq!(trader.current_price(), initial_price);
+        assert_eq!(trader.buy_levels().len(), GRID_LEVELS);
+        assert_eq!(trader.sell_levels().len(), GRID_LEVELS);
+        
+        // Test price logging logic
+        trader.update_logged_price(1.5000); // Set initial logged price
+        assert!(trader.should_log_price(1.5015, 0.001)); // Significant change (0.0015 > 0.001)
+        assert!(!trader.should_log_price(1.5005, 0.01)); // Small change (0.0005 < 0.01)
+        
+        println!("✅ Modular GridTrader test passed");
+    }    #[tokio::test]
     async fn test_end_to_end_grid_simulation() {
         // Simulate a complete grid trading scenario
         let mut trader = TestGridTrader::new();

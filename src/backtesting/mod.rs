@@ -145,7 +145,7 @@ impl Default for TradingCosts {
         Self {
             maker_fee_rate: 0.0016,     // 0.16% - Kraken Pro maker fee
             taker_fee_rate: 0.0026,     // 0.26% - Kraken Pro taker fee
-            min_order_size: 1.0,        // £1 minimum
+            min_order_size: 0.50,       // £0.50 minimum (reduced from £1 for better grid trading)
             typical_spread_bps: 5.0,    // 5 basis points typical spread
         }
     }
@@ -182,7 +182,7 @@ pub struct RiskConfig {
 impl Default for RiskConfig {
     fn default() -> Self {
         Self {
-            max_position_size_pct: 0.02,    // 2% of capital per position
+            max_position_size_pct: 0.10,    // 10% of capital per position (increased from 2% for crypto trading)
             max_daily_loss_pct: 0.05,       // 5% daily loss limit
             max_drawdown_pct: 0.15,         // 15% drawdown stop
             min_time_between_trades_ms: 1000, // 1 second minimum

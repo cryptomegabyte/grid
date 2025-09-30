@@ -230,10 +230,11 @@ impl BacktestingEngine {
             }
 
             let trade_quantity = self.calculate_position_size(signal, available_capital);
+            let trade_value = trade_quantity * cost_analysis.execution_price;
             
-            if trade_quantity < self.config.trading_costs.min_order_size {
+            if trade_value < self.config.trading_costs.min_order_size {
                 rejected_size += 1;
-                continue; // Skip trades below minimum size
+                continue; // Skip trades below minimum monetary value
             }
 
             // Update portfolio state and create trade with proper PnL

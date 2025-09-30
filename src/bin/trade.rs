@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use tokio::time::{sleep, Duration};
 use tracing::{info, warn, error};
-use grid_trading_bot::core::live_trading::LiveTradingEngine;
+use grid_trading_bot::core::{LiveTradingEngine, GridMode};
 use chrono::Utc;
 
 #[derive(Parser)]
@@ -96,8 +96,10 @@ fn calculate_trading_duration(hours: Option<f64>, minutes: Option<f64>) -> Optio
 async fn run_live_trading_simulation(capital: f64, strategies_dir: &str, duration: Option<Duration>) -> Result<(), Box<dyn std::error::Error>> {
     info!("🔧 Initializing live trading engine with £{:.2} capital", capital);
     
-    // Create trading engine
-    let mut engine = LiveTradingEngine::new(capital);
+    // Create trading engine with real market data
+    let mut engine = LiveTradingEngine::new(capital)
+        .with_real_data(true)
+        .with_grid_mode(GridMode::VolatilityAdaptive);
     
     // Load all optimized strategies
     let loaded_count = engine.load_optimized_strategies(strategies_dir)?;
@@ -111,11 +113,14 @@ async fn run_live_trading_simulation(capital: f64, strategies_dir: &str, duratio
     info!("✅ Loaded {} optimized strategies", loaded_count);
     
     if let Some(duration) = duration {
-        info!("🎯 Starting live simulation for {:.1} hours - Press Ctrl+C to stop early", duration.as_secs_f64() / 3600.0);
+        info!("🎯 Starting LIVE trading with real market data for {:.1} hours - Press Ctrl+C to stop early", duration.as_secs_f64() / 3600.0);
         info!("⏰ Trading will automatically stop at {}", (Utc::now() + chrono::Duration::from_std(duration).unwrap()).format("%H:%M:%S UTC"));
     } else {
-        info!("🎯 Starting live simulation - Press Ctrl+C to stop");
+        info!("🎯 Starting LIVE trading with real market data - Press Ctrl+C to stop");
     }
+    
+    info!("📡 Using adaptive grid spacing based on real market volatility");
+    info!("🔗 Connecting to Kraken WebSocket for real-time price feeds...");
     
     // Set up graceful shutdown with optional duration
     let ctrl_c = tokio::signal::ctrl_c();

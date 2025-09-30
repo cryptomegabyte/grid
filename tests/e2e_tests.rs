@@ -1,5 +1,5 @@
 use grid_trading_bot::{
-    GridTrader, MarketState, GridSignal, KrakenWebSocketClient, parse_kraken_ticker,
+    GridTrader, MarketState, GridSignal, parse_kraken_ticker,
     KRAKEN_WS_URL, TRADING_PAIR, GRID_LEVELS, GRID_SPACING
 };
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};

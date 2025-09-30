@@ -7,6 +7,12 @@ pub struct MarketAnalyzer {
     current_state: MarketState,
 }
 
+impl Default for MarketAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MarketAnalyzer {
     pub fn new() -> Self {
         Self {

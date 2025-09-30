@@ -1,6 +1,6 @@
 // Common types used across the application
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum MarketState {
     TrendingUp,    // Price generally increasing
     TrendingDown,  // Price generally decreasing  

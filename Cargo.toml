@@ -3,7 +3,26 @@ name = "grid-trading-bot"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "backtest"
+path = "src/bin/backtest.rs"
+
+[[bin]]
+name = "trade" 
+path = "src/bin/trade.rs"
+
+[[bin]]
+name = "simple_backtest"
+path = "src/bin/simple_backtest.rs"
+
+[[bin]]
+name = "simple_trade"
+path = "src/bin/simple_trade.rs"
+
 [dependencies]
+clap = { version = "4.0", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
 tokio = { version = "1.0", features = ["full"] }
 tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -11,3 +30,12 @@ serde_json = "1.0"
 toml = "0.8"
 thiserror = "1.0"
 futures-util = "0.3"
+
+# Vectorized backtesting dependencies
+polars = { version = "0.33", features = ["lazy", "temporal", "strings"] }
+ndarray = { version = "0.15", features = ["serde"] }
+reqwest = { version = "0.11", features = ["json"] }
+rayon = "1.7"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+rand = "0.8"

@@ -1,0 +1,8 @@
+{
+  "trading_pair": "BTCGBP",
+  "grid_levels": 5,
+  "grid_spacing": 0.01,
+  "expected_return": 0.0,
+  "total_trades": 0,
+  "generated_at": "2025-09-30T16:09:23.557114463Z"
+}

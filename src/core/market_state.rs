@@ -4,6 +4,7 @@ use crate::core::types::MarketState;
 use crate::config::MarketConfig;
 use std::collections::VecDeque;
 
+#[derive(Debug, Clone)]
 pub struct MarketAnalyzer {
     price_history: VecDeque<f64>,
     volume_history: VecDeque<f64>,

@@ -11,6 +11,9 @@ use uuid::Uuid;
 use rand::{thread_rng, Rng};
 use crate::clients::kraken_ws::{KrakenWebSocketClient, MarketData, OHLCData};
 use crate::simulation::SimulationAdapter;
+use crate::core::grid_trader::GridTrader;
+use crate::core::types::GridSignal;
+use crate::config::{TradingConfig, MarketConfig};
 use futures_util::StreamExt;
 use tokio_tungstenite::tungstenite::protocol::Message;
 use serde_json::Value;
@@ -35,8 +38,14 @@ pub struct LiveStrategy {
     pub pair: String,
     pub config: OptimizedStrategy,
     pub grid_levels: Vec<f64>,
-    pub current_position: f64,
-    pub available_capital: f64,
+    
+    // CRITICAL: Use position-safe GridTrader instead of manual tracking
+    pub grid_trader: GridTrader,
+    
+    // Legacy fields kept for compatibility
+    pub current_position: f64,  // Deprecated: use grid_trader.inventory_quantity
+    pub available_capital: f64,  // Deprecated: use grid_trader.cash_balance
+    
     pub active_orders: Vec<SimulatedOrder>,
     pub market_data: Option<MarketData>,
     pub recent_ohlc: Vec<OHLCData>,
@@ -231,6 +240,50 @@ impl LiveTradingEngine {
         }
         self
     }
+    
+    /// CRITICAL: Check portfolio-level risk limits before allowing any trade
+    fn check_portfolio_risk(&self) -> Result<(), String> {
+        let total_value = self.calculate_total_portfolio_value();
+        let drawdown = (self.total_capital - total_value) / self.total_capital;
+        
+        // Check maximum drawdown limit (15%)
+        if drawdown > 0.15 {
+            return Err(format!("Portfolio drawdown {:.1}% exceeds 15% limit - TRADING HALTED", drawdown * 100.0));
+        }
+        
+        // Check total exposure across all strategies
+        let mut total_inventory_value = 0.0;
+        for (pair, strategy) in &self.strategies {
+            if let Some(price_data) = self.current_prices.get(pair) {
+                let inventory_value = strategy.grid_trader.inventory_quantity() * price_data.last;
+                total_inventory_value += inventory_value;
+            }
+        }
+        
+        let exposure_pct = total_inventory_value / total_value;
+        if exposure_pct > 0.60 {
+            return Err(format!("Total portfolio exposure {:.1}% exceeds 60% limit", exposure_pct * 100.0));
+        }
+        
+        // Check daily loss limit
+        let daily_pnl = self.portfolio.realized_pnl + self.portfolio.unrealized_pnl;
+        let daily_loss_pct = daily_pnl / self.total_capital;
+        if daily_loss_pct < -0.05 {
+            return Err(format!("Daily loss {:.1}% exceeds 5% limit - TRADING HALTED", daily_loss_pct.abs() * 100.0));
+        }
+        
+        Ok(())
+    }
+    
+    fn calculate_total_portfolio_value(&self) -> f64 {
+        let mut total = self.portfolio.cash_balance;
+        for (pair, strategy) in &self.strategies {
+            if let Some(price_data) = self.current_prices.get(pair) {
+                total += strategy.grid_trader.get_portfolio_value(price_data.last);
+            }
+        }
+        total
+    }
 
     /// Initialize WebSocket connection for real market data
     pub async fn connect_market_data(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -326,12 +379,25 @@ impl LiveTradingEngine {
         // Allocate capital per strategy (equal allocation for now)
         let capital_per_strategy = self.total_capital / 20.0; // Assuming max 20 strategies
         
+        // CRITICAL: Initialize position-safe GridTrader
+        let trading_config = TradingConfig {
+            kraken_ws_url: "wss://ws.kraken.com".to_string(),
+            trading_pair: optimized.trading_pair.clone(),
+            grid_levels: optimized.grid_levels as usize,
+            grid_spacing: optimized.grid_spacing,
+            min_price_change: 0.001,
+        };
+        
+        let market_config = MarketConfig::default();
+        let grid_trader = GridTrader::with_capital(trading_config, market_config, capital_per_strategy);
+        
         Ok(LiveStrategy {
             pair: optimized.trading_pair.clone(),
             config: optimized,
             grid_levels,
-            current_position: 0.0,
-            available_capital: capital_per_strategy,
+            grid_trader,  // Position-safe trader with capital tracking
+            current_position: 0.0,  // Deprecated but kept for compatibility
+            available_capital: capital_per_strategy,  // Deprecated but kept for compatibility
             active_orders: Vec::new(),
             market_data: None,
             recent_ohlc: Vec::new(),
@@ -969,11 +1035,27 @@ impl LiveTradingEngine {
     }
 
     fn update_grid_levels(&self, strategy: &mut LiveStrategy, current_price: f64) {
+        // CRITICAL: Update GridTrader with new price and get signals
+        let signal = strategy.grid_trader.update_with_price(current_price);
+        
+        // Legacy grid level recalculation (kept for visualization)
         let spacing = strategy.config.grid_spacing;
         let levels = strategy.config.grid_levels;
-        
-        // Recalculate grid levels around current price
         strategy.grid_levels = self.calculate_static_grid_levels(current_price, spacing, levels);
+        
+        // Log position summary
+        if strategy.grid_trader.should_log_price(current_price, 0.001) {
+            debug!("📊 {}: {}", strategy.pair, strategy.grid_trader.get_position_summary(current_price));
+            strategy.grid_trader.update_logged_price(current_price);
+        }
+        
+        // Handle trading signals from position-safe GridTrader
+        match signal {
+            GridSignal::Buy(_) | GridSignal::Sell(_) => {
+                debug!("🎯 GridTrader generated signal: {:?}", signal);
+            }
+            GridSignal::None => {}
+        }
     }
 
     fn has_pending_order_at_level(&self, pair: &str, level: f64, side: &str) -> bool {
@@ -987,9 +1069,16 @@ impl LiveTradingEngine {
     }
 
     async fn place_simulated_order(&mut self, pair: &str, side: &str, price: f64, quantity: f64) {
+        // CRITICAL: Check portfolio-level risk limits first
+        if let Err(risk_error) = self.check_portfolio_risk() {
+            warn!("🚨 RISK LIMIT VIOLATION: {}", risk_error);
+            warn!("⛔ Order blocked: {} {} {} @ £{:.6}", side.to_uppercase(), quantity, pair, price);
+            return;
+        }
+        
         // Apply realistic constraints
         if quantity < 1.0 { // Minimum order size
-            debug!("⚠️ Order too small: {:.2} units for {} (min: 1.0)", quantity, pair);
+            debug!("⚠️  Order too small: {:.2} units for {} (min: 1.0)", quantity, pair);
             return;
         }
 
@@ -1010,7 +1099,7 @@ impl LiveTradingEngine {
             info!("📝 Placed {} order: {:.2} {} @ £{:.6} (ID: {})", 
                   side.to_uppercase(), quantity, pair, price, &order_id[..8]);
         } else {
-            warn!("⚠️ Strategy not found for {}", pair);
+            warn!("⚠️  Strategy not found for {}", pair);
         }
     }
 
@@ -1086,9 +1175,19 @@ impl LiveTradingEngine {
                                 // Update portfolio
                                 self.update_portfolio_from_trade(&trade);
                                 
-                                // Update strategy position
-                                let trade_value = trade.price * trade.quantity;
+                                // CRITICAL: Update GridTrader position tracking
                                 if let Some(strategy) = self.strategies.get_mut(pair) {
+                                    let signal = match trade.side.as_str() {
+                                        "buy" => GridSignal::Buy(order.price),
+                                        "sell" => GridSignal::Sell(order.price),
+                                        _ => GridSignal::None,
+                                    };
+                                    
+                                    // Use GridTrader's position-safe execution
+                                    strategy.grid_trader.execute_trade(&signal, trade.price);
+                                    
+                                    // Legacy tracking (deprecated but kept for compatibility)
+                                    let trade_value = trade.price * trade.quantity;
                                     match trade.side.as_str() {
                                         "buy" => {
                                             strategy.current_position += trade.quantity;

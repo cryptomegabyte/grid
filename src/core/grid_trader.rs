@@ -4,6 +4,7 @@ use crate::core::types::{GridSignal, MarketState};
 use crate::core::market_state::MarketAnalyzer;
 use crate::config::{TradingConfig, MarketConfig};
 
+#[derive(Debug, Clone)]
 pub struct GridTrader {
     current_price: f64,
     buy_levels: Vec<f64>,
@@ -308,6 +309,27 @@ impl GridTrader {
             portfolio_value, self.cash_balance, self.inventory_quantity, 
             self.average_entry_price, unrealized_pnl, self.realized_pnl, total_pnl, self.total_trades
         )
+    }
+    
+    // Public getters for position tracking
+    pub fn cash_balance(&self) -> f64 {
+        self.cash_balance
+    }
+    
+    pub fn inventory_quantity(&self) -> f64 {
+        self.inventory_quantity
+    }
+    
+    pub fn average_entry_price(&self) -> f64 {
+        self.average_entry_price
+    }
+    
+    pub fn realized_pnl(&self) -> f64 {
+        self.realized_pnl
+    }
+    
+    pub fn total_trades(&self) -> usize {
+        self.total_trades
     }
 }
 

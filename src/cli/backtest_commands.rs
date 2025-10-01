@@ -30,7 +30,21 @@ pub async fn optimize_single_pair(
     _comprehensive: bool,
     config: &CliConfig,
 ) -> grid_trading_bot::TradingResult<()> {
+    use grid_trading_bot::PreFlightValidator;
+    
     info!("🎯 Optimizing {} with config", pair);
+    
+    // Run pre-flight validation
+    let validator = PreFlightValidator::new(config.clone());
+    let validation = validator.validate_for_backtesting().await;
+    
+    if !validation.passed {
+        validation.display();
+        return Err(grid_trading_bot::TradingError::ValidationFailed(
+            "Validation failed".to_string()
+        ));
+    }
+    
     info!("   Grid range: {:?}", config.optimization.grid_levels_range);
     warn!("⚠️  For now: cargo run --bin backtest -- optimize-pair --pair {}", pair);
     Ok(())

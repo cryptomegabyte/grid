@@ -25,6 +25,7 @@ pub async fn start_trading(
     config: &CliConfig,
 ) -> grid_trading_bot::TradingResult<()> {
     use grid_trading_bot::core::LiveTradingEngine;
+    use grid_trading_bot::PreFlightValidator;
     use std::time::Duration;
 
     if dry_run {
@@ -32,18 +33,34 @@ pub async fn start_trading(
     } else {
         info!("🚀 LIVE TRADING");
         warn!("⚠️  Real money!");
-        
-        if !config.has_valid_api_keys() {
-            error!("❌ API keys not configured!");
-            return Err("Invalid API configuration".into());
-        }
     }
 
     let final_capital = if capital != 500.0 { capital } else { config.trading.default_capital };
+    
+    // Run pre-flight validation
+    info!("");
+    let validator = PreFlightValidator::new(config.clone());
+    let validation = if dry_run {
+        validator.validate_for_backtesting().await
+    } else {
+        validator.validate_for_trading(final_capital).await
+    };
+    
+    validation.display();
+    
+    if !validation.passed {
+        error!("");
+        error!("❌ Pre-flight validation failed. Cannot proceed.");
+        return Err(grid_trading_bot::TradingError::ValidationFailed(
+            "Critical validation checks did not pass".to_string()
+        ));
+    }
+    
+    info!("");
     info!("💰 Capital: £{:.2}", final_capital);
     info!("⚙️  Max position: {:.1}%", config.trading.max_position_size * 100.0);
 
-    let duration = if let Some(h) = hours {
+    let _duration = if let Some(h) = hours {
         Some(Duration::from_secs_f64(h * 3600.0))
     } else if let Some(m) = minutes {
         Some(Duration::from_secs_f64(m * 60.0))

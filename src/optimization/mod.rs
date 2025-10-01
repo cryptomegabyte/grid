@@ -105,12 +105,18 @@ impl ParameterOptimizer {
         &self,
         trading_pair: &str,
     ) -> Result<Vec<OptimizationResult>, BacktestError> {
+        use crate::progress::OptimizationProgress;
+        
         info!("🔧 Starting parameter optimization for {}", trading_pair);
         
         let parameter_sets = self.generate_parameter_combinations();
         info!("📊 Testing {} parameter combinations", parameter_sets.len());
         
+        // Create progress bar
+        let progress = OptimizationProgress::new(parameter_sets.len());
+        
         let mut results = Vec::new();
+        let mut best_score = 0.0;
         
         for (i, params) in parameter_sets.iter().enumerate() {
             debug!("Testing parameter set {}/{}", i + 1, parameter_sets.len());
@@ -122,6 +128,20 @@ impl ParameterOptimizer {
             loop {
                 match self.test_parameter_set(trading_pair, params).await {
                     Ok(result) => {
+                        // Update best score if improved
+                        if result.score > best_score {
+                            best_score = result.score;
+                        }
+                        
+                        // Update progress bar with current status
+                        let param_desc = format!(
+                            "levels={}, spacing={:.3}, timeframe={}m",
+                            params.grid_levels,
+                            params.grid_spacing,
+                            params.timeframe_minutes
+                        );
+                        progress.update(i + 1, best_score, &param_desc);
+                        
                         results.push(result);
                         break;
                     }
@@ -138,11 +158,6 @@ impl ParameterOptimizer {
                     }
                 }
             }
-            
-            // Progress reporting
-            if (i + 1) % 10 == 0 {
-                info!("✅ Completed {}/{} parameter tests", i + 1, parameter_sets.len());
-            }
         }
         
         // Rank results by composite score
@@ -150,6 +165,9 @@ impl ParameterOptimizer {
         for (i, result) in results.iter_mut().enumerate() {
             result.rank = i + 1;
         }
+        
+        // Finish progress bar
+        progress.finish(best_score);
         
         info!("🏆 Optimization complete! Best score: {:.4}", 
               results.first().map(|r| r.score).unwrap_or(0.0));

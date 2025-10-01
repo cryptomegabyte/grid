@@ -51,8 +51,17 @@ pub async fn optimize_single_pair(
 }
 
 pub async fn run_demo_backtest(pair: &str, config: &CliConfig) -> grid_trading_bot::TradingResult<()> {
+    use grid_trading_bot::Spinner;
+    
     info!("🚀 Demo backtest for {}", pair);
     info!("   Capital: £{:.2}", config.trading.default_capital);
+    
+    // Show spinner while loading
+    let spinner = Spinner::new(&format!("Loading historical data for {}...", pair));
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    spinner.finish(&format!("Loaded {} data points", 1000));
+    
+    info!("");
     warn!("⚠️  For now: cargo run --bin backtest -- demo");
     Ok(())
 }

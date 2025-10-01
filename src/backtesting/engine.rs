@@ -64,31 +64,35 @@ impl BacktestingEngine {
         start_date: DateTime<Utc>,
         end_date: DateTime<Utc>,
     ) -> Result<BacktestResult, BacktestError> {
+        use crate::progress::BacktestProgress;
+        
+        // Create progress bar with 7 steps
+        let progress = BacktestProgress::new(7);
+        
         let mut processor = VectorizedGridProcessor::new(self.config.clone());
 
         // Step 1: Vectorized market state detection
-        println!("🔍 Detecting market states...");
+        progress.set_step("Detecting market states...");
         let market_states = processor.detect_market_states_vectorized(data);
 
         // Step 2: Compute grid levels for entire series
-        println!("📏 Computing grid levels...");
+        progress.set_step("Computing grid levels...");
         let grid_levels = processor.compute_grid_levels_vectorized(data, &market_states);
 
         // Step 3: Detect all trading signals
-        println!("⚡ Detecting trading signals...");
+        progress.set_step(&format!("Detecting trading signals..."));
         let signals = processor.detect_signals_vectorized(data, &grid_levels);
-        println!("Found {} trading signals", signals.len());
 
         // Step 4: Calculate trading costs
-        println!("💰 Calculating trading costs...");
+        progress.set_step("Calculating trading costs...");
         let cost_analyses = processor.calculate_trading_costs_vectorized(&signals, data);
 
         // Step 5: Simulate portfolio and generate trades
-        println!("🏦 Simulating portfolio...");
+        progress.set_step("Simulating portfolio...");
         let trades = self.simulate_portfolio(&signals, &cost_analyses, data);
 
         // Step 6: Calculate performance metrics
-        println!("📈 Analyzing performance...");
+        progress.set_step("Analyzing performance...");
         let performance_metrics = self.performance_analyzer.calculate_comprehensive_metrics(
             &trades,
             &data.prices,
@@ -97,6 +101,7 @@ impl BacktestingEngine {
         );
 
         // Step 7: Calculate grid statistics
+        progress.set_step("Finalizing results...");
         let grid_statistics = self.calculate_grid_statistics(&grid_levels, &market_states);
 
         // Step 8: Create equity curve
@@ -104,16 +109,20 @@ impl BacktestingEngine {
 
         // Get Markov statistics if available
         let markov_stats = processor.get_markov_statistics();
+
+        // Finish progress bar with summary
+        progress.finish(
+            performance_metrics.total_trades,
+            performance_metrics.total_return_pct
+        );
+        
         if let Some(ref stats) = markov_stats {
             println!("🎯 Markov Analysis: {:.1}% confidence, {} samples", 
                      stats.confidence_level * 100.0, stats.total_samples);
         }
 
-        println!("✅ Backtest completed!");
-        println!("📊 Total Return: {:.2}%", performance_metrics.total_return_pct);
         println!("📊 Sharpe Ratio: {:.2}", performance_metrics.sharpe_ratio);
         println!("📊 Max Drawdown: {:.2}%", performance_metrics.max_drawdown_pct);
-        println!("📊 Total Trades: {}", performance_metrics.total_trades);
         println!("📊 Win Rate: {:.1}%", performance_metrics.win_rate_pct);
 
         Ok(BacktestResult {

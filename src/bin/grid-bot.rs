@@ -265,7 +265,13 @@ async fn main() -> TradingResult<()> {
         }
         
         Commands::Trade(cmd) => {
-            let config = load_config_or_exit(&cli.config)?;
+            // Check if this is a dry-run trade (doesn't need API keys)
+            let skip_api_keys = matches!(&cmd, TradeCommands::Start { dry_run: true, .. });
+            let config = if skip_api_keys {
+                load_config_for_backtest(&cli.config)?
+            } else {
+                load_config_or_exit(&cli.config)?
+            };
             handle_trade_command(cmd, config).await?;
         }
     }

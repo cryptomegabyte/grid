@@ -12,9 +12,16 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
 
 # Environment
 .env
+
+# Data & Database
+data/
+*.db
+*.db-shm
+*.db-wal
 
 # Generated files
 strategies/

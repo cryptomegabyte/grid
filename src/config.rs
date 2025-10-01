@@ -25,7 +25,7 @@ impl Default for MarketConfig {
         Self {
             trend_threshold: 0.005,      // 0.5%
             volatility_threshold: 0.02,  // 2%
-            price_history_size: 10,
+            price_history_size: 50,      // INCREASED: 50 bars for better trend detection (was 10)
         }
     }
 }

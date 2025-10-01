@@ -147,7 +147,7 @@ impl Default for TradingCosts {
             maker_fee_rate: 0.0016,     // 0.16% - Kraken Pro maker fee
             taker_fee_rate: 0.0026,     // 0.26% - Kraken Pro taker fee
             min_order_size: 0.50,       // £0.50 minimum (reduced from £1 for better grid trading)
-            typical_spread_bps: 5.0,    // 5 basis points typical spread
+            typical_spread_bps: 20.0,   // REALISTIC: 20 bps for crypto (was 5, too optimistic)
         }
     }
 }
@@ -163,8 +163,8 @@ pub struct SlippageModel {
 impl Default for SlippageModel {
     fn default() -> Self {
         Self {
-            base_slippage_bps: 2.5,         // 2.5 bps base slippage
-            market_impact_factor: 0.0001,   // 0.01% impact per £1000
+            base_slippage_bps: 8.0,         // REALISTIC: 8 bps base slippage for crypto (was 2.5)
+            market_impact_factor: 0.0002,   // 0.02% impact per £1000 (increased)
             volatility_multiplier: 0.5,     // 50% volatility impact
             liquidity_factor: 1.0,          // Normal liquidity
         }

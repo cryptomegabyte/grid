@@ -431,11 +431,49 @@ mod tests {
     fn test_strategy_validation() {
         use crate::Strategy;
         use crate::CliConfig;
+        use crate::cli_config::*;
 
-        let config = CliConfig::from_file("config.toml").unwrap_or_else(|_| {
-            // Create minimal config for testing
-            panic!("Config required for test");
-        });
+        // Create a minimal test config with correct field names
+        let config = CliConfig {
+            api: ApiConfig {
+                api_key: "test_key".to_string(),
+                api_secret: "test_secret".to_string(),
+                rest_url: "https://api.kraken.com".to_string(),
+                ws_url: "wss://ws.kraken.com".to_string(),
+            },
+            trading: TradingDefaults {
+                default_capital: 1000.0,
+                default_grid_levels: 10,
+                default_grid_spacing: 0.02,
+                max_position_size: 0.25,
+                max_drawdown: 0.15,
+                stop_loss: 0.05,
+            },
+            optimization: OptimizationConfig {
+                default_iterations: 100,
+                default_strategy: "random-search".to_string(),
+                target_metric: "sharpe_ratio".to_string(),
+                grid_levels_range: [3, 20],
+                grid_spacing_range: [0.005, 0.05],
+            },
+            backtesting: BacktestingConfig {
+                default_lookback_days: 30,
+                transaction_fee: 0.0026,
+                slippage: 0.001,
+            },
+            monitoring: MonitoringConfig {
+                check_interval_seconds: 60,
+                alert_on_error: true,
+                alert_on_large_drawdown: true,
+                log_level: "info".to_string(),
+                log_to_file: true,
+                log_directory: "logs".to_string(),
+            },
+            database: DatabaseConfig {
+                db_path: "data/test.db".to_string(),
+                backup_interval_hours: 24,
+            },
+        };
 
         let validator = PreFlightValidator::new(config);
 

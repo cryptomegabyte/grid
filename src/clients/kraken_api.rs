@@ -36,7 +36,7 @@ impl KrakenHistoricalClient {
         Self {
             client: reqwest::Client::new(),
             base_url: "https://api.kraken.com".to_string(),
-            rate_limiter: RateLimiter::new(60, Duration::from_secs(60)), // 60 calls per minute
+            rate_limiter: RateLimiter::new(30, Duration::from_secs(60)), // 30 calls per minute (conservative)
             cache: DataCache::new(),
         }
     }
@@ -126,7 +126,8 @@ impl KrakenHistoricalClient {
             }
             
             // Longer delay between requests to avoid rate limiting during optimization
-            sleep(Duration::from_millis(500)).await;
+            // Kraken has strict rate limits: ~1 req/sec sustained, so use 2s to be safe
+            sleep(Duration::from_millis(2000)).await;
         }
         
         Ok(results)

@@ -151,13 +151,18 @@ impl ParameterOptimizer {
                             warn!("Failed to test parameter set after {} attempts: {}", max_attempts, e);
                             break;
                         } else {
-                            let delay = Duration::from_millis(1000 * (2_u64.pow(attempts - 1)));
+                            // Exponential backoff starting at 3 seconds (increased from 1s)
+                            let delay = Duration::from_millis(3000 * (2_u64.pow(attempts - 1)));
                             debug!("Retrying parameter test in {}ms (attempt {}/{})", delay.as_millis(), attempts, max_attempts);
                             tokio::time::sleep(delay).await;
                         }
                     }
                 }
             }
+            
+            // Add delay between testing different parameter sets to respect API rate limits
+            // This is crucial when running many iterations
+            tokio::time::sleep(Duration::from_millis(1500)).await;
         }
         
         // Rank results by composite score

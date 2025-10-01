@@ -17,7 +17,8 @@ help:
 
 backtest:
 	@echo "🎯 Running backtesting optimization..."
-	@cargo run --bin grid-bot -- optimize all --limit 10 --iterations 20
+	@echo "⚠️  Using conservative settings to avoid API rate limits"
+	@cargo run --bin grid-bot -- optimize all --limit 5 --iterations 10
 
 trade-sim:
 	@echo "� Starting Paper Trading with Simulation Engine"

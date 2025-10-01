@@ -4,6 +4,7 @@ pub mod engine;
 pub mod vectorized;
 pub mod analytics;
 pub mod markov;
+pub mod transaction_costs;
 
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};

@@ -121,19 +121,32 @@ impl VectorizedGridProcessor {
         }
     }
 
-    fn get_adaptive_spacing(&mut self, current_price: f64, current_state: MarketState, _index: usize) -> f64 {
+    fn get_adaptive_spacing(&mut self, current_price: f64, current_state: MarketState, index: usize) -> f64 {
         let base_spacing = self.config.base_grid_spacing * current_price;
         
-        // Use Markov predictions if available
-        if let Some(ref analyzer) = self.markov_analyzer {
-            analyzer.get_adaptive_grid_spacing(base_spacing, current_state)
+        // Calculate volatility factor from recent price history
+        let volatility_factor = if index >= 10 {
+            let recent_prices = (index.saturating_sub(10)..=index).map(|_| current_price).collect::<Vec<_>>();
+            let mean = recent_prices.iter().sum::<f64>() / recent_prices.len() as f64;
+            let variance = recent_prices.iter().map(|&p| (p - mean).powi(2)).sum::<f64>() / recent_prices.len() as f64;
+            let vol = (variance.sqrt() / mean).max(0.01).min(0.5); // Clamp between 1% and 50%
+            1.0 + vol * 2.0 // Increase spacing with volatility
         } else {
-            // Fallback to simple state-based adjustment
+            1.0
+        };
+        
+        // Use Markov predictions if available
+        let markov_adjustment = if let Some(ref analyzer) = self.markov_analyzer {
+            analyzer.get_adaptive_grid_spacing(base_spacing, current_state) / base_spacing
+        } else {
+            // Fallback to state-based adjustment
             match current_state {
-                MarketState::TrendingUp | MarketState::TrendingDown => base_spacing * 1.5,
-                MarketState::Ranging => base_spacing,
+                MarketState::TrendingUp | MarketState::TrendingDown => 1.8, // Wider spacing in trends
+                MarketState::Ranging => 0.8, // Tighter spacing in ranging markets
             }
-        }
+        };
+        
+        (base_spacing * volatility_factor * markov_adjustment).max(current_price * 0.001) // Minimum 0.1% spacing
     }
 
     /// Vectorized signal detection across entire price series

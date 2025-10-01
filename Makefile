@@ -5,7 +5,7 @@ help:
 	@echo "🚀 Grid Trading Bot - Simple Commands"
 	@echo ""
 	@echo "Essential Commands:"
-	@echo "  make backtest     - Run autonomous GBP optimization (best strategy)"
+	@echo "  make backtest     - Run autonomous optimization (generates optimized strategies)"
 	@echo "  make trade        - Start LIVE trading with real market data (indefinite)"
 	@echo "  make trade-market - LIVE trade for 8 hours with real Kraken feeds"
 	@echo "  make trade-demo   - 5-minute LIVE demo with real data"
@@ -15,7 +15,9 @@ help:
 	@echo "Advanced:"
 	@echo "  make optimize PAIR=ADAGBP    - Optimize specific pair"
 	@echo "  make trade-hours HOURS=6     - Trade for custom hours"
-	@echo "  make full-session HOURS=8    - Complete workflow: backtest + trade"
+	@echo "  make full-session HOURS=8    - Complete workflow: optimize + trade"
+	@echo ""
+	@echo "📁 All strategies saved to: strategies/"
 
 # Build the project
 build:
@@ -23,7 +25,7 @@ build:
 
 # Best backtest command - runs autonomous optimization with optimal settings
 backtest:
-	@echo "🎯 Running autonomous GBP optimization with best settings..."
+	@echo "🎯 Running autonomous optimization (generates optimized strategies)..."
 	cargo run --bin backtest -- optimize-gbp --limit 10 --iterations 20 --strategy random-search
 
 # Optimize specific pair (usage: make optimize PAIR=ADAGBP)
@@ -57,7 +59,7 @@ trade-demo:
 # Complete workflow: backtest optimization + live trading (usage: make full-session HOURS=8)
 full-session:
 	@echo "🎯 Starting complete trading session for $(HOURS) hours..."
-	@echo "📊 Phase 1: Running autonomous GBP optimization..."
+	@echo "📊 Phase 1: Running autonomous optimization..."
 	cargo run --bin backtest -- optimize-gbp --limit 10 --iterations 20 --strategy random-search
 	@echo "✅ Optimization complete! Starting live trading..."
 	@echo "📡 Phase 2: LIVE trading with optimized strategies for $(HOURS) hours"
@@ -71,5 +73,5 @@ test:
 # Clean everything
 clean:
 	cargo clean
-	rm -rf strategies/ optimized_strategies/ *.md
+	rm -rf strategies/ *.md
 	@echo "✅ Cleaned all artifacts"

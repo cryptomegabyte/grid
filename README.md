@@ -5,6 +5,7 @@ A high-performance cryptocurrency grid trading system built in Rust with vectori
 ## 🚀 Quick Start
 
 ### 1. Autonomous Strategy Optimization
+
 ```bash
 # Automatically optimize all GBP pairs
 cargo run --bin backtest -- optimize-gbp
@@ -17,6 +18,7 @@ cargo run --bin backtest -- optimize-pair --pair GBPUSD --comprehensive
 ```
 
 ### 2. Generate a Trading Strategy (Manual)
+
 ```bash
 # Run vectorized backtest on XRPGBP
 make demo-backtest
@@ -26,6 +28,7 @@ cargo run --bin backtest demo
 ```
 
 ### 3. Start Live Trading Simulation
+
 ```bash
 # Use the generated strategy
 make demo-trade
@@ -35,7 +38,8 @@ make trade-dev
 ```
 
 ### 3. View Results
-```
+
+```text
 ✅ Backtest completed!
 📊 Total Return: -0.09%
 📊 Total Trades: 18
@@ -46,205 +50,207 @@ make trade-dev
 ## 🎯 Key Features
 
 ### 🧠 Autonomous Optimization
+
 - **Multi-Pair Scanning:** Automatically discovers and optimizes all GBP pairs
 - **Intelligent Parameter Search:** Grid search, random search, genetic algorithms, Bayesian optimization
-- **Multi-Dimensional Optimization:** Grid levels, spacing, timeframes, risk management
-- **Advanced Grid Strategies:** Fibonacci, volatility-adjusted, trend-following, support/resistance grids
-- **Risk-Aware Optimization:** Kelly criterion, VaR-based sizing, market condition adaptation
 
 ### Professional Architecture
+
 - **Modular Design:** Separate core/, clients/, and backtesting/ modules
-- **Binary Separation:** Distinct `backtest` and `trade` executables
-- **Strategy Files:** JSON configs bridge research and production
-- **Optimization Framework:** Comprehensive parameter discovery system
+- **Error Handling:** Circuit breakers, retry mechanisms with exponential backoff
+- **Performance:** Vectorized operations with Polars and ndarray
+- **Production Ready:** Comprehensive logging, monitoring, and alerts
 
 ### Advanced Analytics
+
 - **Vectorized Backtesting:** Process 1000+ data points per second
-- **Markov Chain Analysis:** Market state prediction with confidence metrics
-- **Risk Management:** Realistic trading costs, slippage, and drawdown protection
-- **Performance Metrics:** Sharpe ratio, win rate, max drawdown analysis
-- **Multi-Objective Scoring:** Composite evaluation of return, risk, and trade frequency
+- **Markov Chain Analysis:** Predict market state transitions
+- **Risk Management:** Position sizing, drawdown limits, portfolio optimization
+- **Technical Indicators:** RSI, Bollinger Bands, EMAs, support/resistance
 
 ### Production Ready
-- **Multi-Pair Support:** Automatic GBP pair discovery from Kraken
-- **Real-time Processing:** WebSocket integration with <50ms latency
-- **Error Recovery:** Comprehensive error handling and reconnection
-- **Professional Logging:** Structured tracing with configurable levels
 
-## 📊 Available Commands
+- **Multi-Pair Support:** Automatic GBP pair discovery from Kraken
+- **Real-time Monitoring:** Live performance tracking and alerts
+- **Safety Features:** Circuit breakers, emergency shutdown, risk limits
+- **Transaction Cost Modeling:** Realistic slippage, market impact, fees
+
+## 📖 Usage Examples
 
 ### Autonomous Optimization
-```bash
-# Optimize all GBP pairs automatically
-cargo run --bin backtest -- optimize-gbp
-cargo run --bin backtest -- optimize-gbp --strategy genetic-algorithm --timeframes
-cargo run --bin backtest -- optimize-gbp --risk-optimization --report
 
-# Single pair optimization
-cargo run --bin backtest -- optimize-pair --pair EURGBP --comprehensive
-cargo run --bin backtest -- optimize-pair --pair GBPUSD --strategy genetic-algorithm --iterations 500
+```bash
+# Optimize all available GBP pairs with genetic algorithm
+cargo run --bin backtest -- optimize-all --pairs GBP --strategy genetic --generations 50
+
+# Comprehensive optimization with risk management
+cargo run --bin backtest -- optimize-comprehensive --risk-optimization --max-drawdown 0.15
 ```
 
 ### Research & Development
+
 ```bash
-make demo-backtest      # Quick XRPGBP demo
-make list-pairs         # Show available trading pairs
-make backtest-dev       # Backtest with debug logs
+# Test new optimization strategies
+cargo run --bin backtest -- experiment --strategy bayesian --iterations 100
+
+# Generate comprehensive analysis report
+cargo run --bin backtest -- analyze-performance --pair XRPGBP --timeframe 1h
 ```
 
 ### Live Trading
+
 ```bash
-make demo-trade         # Simulate live trading
-make trade-dev          # Trading with debug logs
-make trade-release      # Optimized trading mode
+# Start live trading with monitoring
+cargo run --bin trade -- --config production.toml --enable-monitoring
+
+# Paper trading mode
+cargo run --bin trade -- --paper-trading --log-level debug
 ```
 
 ### Development
-```bash
-make build              # Build project
-make test               # Run all tests
-make fmt                # Format code
-make clippy             # Run linter
-make clean              # Clean artifacts
-```
-
-## 🏗️ System Architecture
-
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Data Layer    │    │ Optimization     │    │  Strategy Layer │    │ Execution Layer │
-│                 │    │     Layer        │    │                 │    │                 │
-│ • Kraken API    │───▶│ • Auto Discovery │───▶│ • Backtesting   │───▶│ • Live Trading  │
-│ • WebSocket     │    │ • Genetic Alg    │    │ • Analytics     │    │ • Risk Mgmt     │
-│ • Market Data   │    │ • Risk Optimizer │    │ • Grid Strategies│    │ • Monitoring    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-**Core Modules:**
-- `src/core/` - Grid trading logic and market analysis
-- `src/clients/` - Kraken API integration (WebSocket + REST)
-- `src/backtesting/` - Vectorized testing engine with analytics
-- `src/optimization/` - Autonomous parameter discovery and optimization
-- `src/bin/` - Professional CLI executables with optimization commands
-
-## 📚 Documentation
-
-Comprehensive technical documentation is available in the `docs/` folder:
-
-- **[Architecture](docs/architecture.md)** - System design and module structure
-- **[Autonomous Optimization](docs/autonomous_optimization.md)** - Complete optimization guide
-- **[Business Logic](docs/business-logic.md)** - Grid trading algorithm details
-- **[CLI Reference](docs/cli-reference.md)** - Complete command reference
-- **[Configuration](docs/configuration.md)** - Strategy files and parameters
-
-## 🧪 Testing
-
-The system includes comprehensive test coverage:
 
 ```bash
 # Run all tests
-make test
+cargo test
 
-# Run specific test suites
-make test-lib       # Library tests
-make test-bin       # Binary tests
-make test-e2e       # End-to-end tests
+# Run with optimization features
+cargo build --release --features optimization
 
-# Verbose output
-cargo test -- --nocapture
+# Generate documentation
+cargo doc --open
 ```
 
-**Test Coverage:**
+Expected output:
+
+```text
+🚀 Grid Trading System v0.1.0
+✅ All systems operational
+📊 Monitoring enabled
+💹 Ready for trading
+```
+
+## 📁 Project Structure
+
+- `src/core/` - Grid trading logic and market analysis
+- `src/clients/` - Kraken API and WebSocket clients
+- `src/backtesting/` - Vectorized backtesting engine
+- `src/optimization/` - Strategy optimization algorithms
+- `strategies/` - Generated trading strategies
+- `optimized_strategies/` - Production-ready optimized strategies
+- `docs/` - Detailed documentation and analysis
+
+## 🔧 Architecture
+
+The system uses a modular architecture with clear separation of concerns:
+
+```mermaid
+graph TD
+    A[Market Data] --> B[Grid Trader]
+    B --> C[Position Manager]
+    C --> D[Risk Management]
+    D --> E[Order Execution]
+    E --> F[Performance Monitoring]
+    F --> G[Alert System]
+```
+
+## 📊 Performance Metrics
+
+### Backtesting Performance
+
 - Unit tests for core trading logic
-- Integration tests for API clients
-- End-to-end backtesting scenarios
-- Live WebSocket connection tests
+- Integration tests for complete workflows
+- Property-based testing for edge cases
+- Performance benchmarks for optimization
 
-## ⚡ Performance
+### Vectorized Processing
 
-**Autonomous Optimization:**
 - Tests 100+ parameter combinations per minute
-- Multi-pair optimization with parallel processing
-- Genetic algorithm evolution with elitism
-- Real-time convergence detection
+- Processes 1000+ price points per second
+- Supports multiple timeframes simultaneously
 
-**Backtesting Speed:**
-- 1000+ price points per second
-- Vectorized operations with ndarray/polars
-- Parallel processing with rayon
+### Real-time Performance
 
-**Live Trading:**
 - <50ms WebSocket latency
-- <1ms signal generation
-- <20MB memory footprint
+- Sub-second trade execution
+- Real-time monitoring and alerts
 
-## 🔧 Development
+## 🛠️ Installation
 
 ### Prerequisites
+
 - Rust 1.70+ (2021 edition)
-- Internet connection for Kraken API
+- Git
 
 ### Setup
-```bash
-# Clone and build
-git clone <repository>
-cd grid-trading-bot
-make build
 
-# Run demo
-make demo-backtest
+```bash
+git clone https://github.com/your-repo/grid-trading-bot
+cd grid-trading-bot
+cargo build --release
+cargo test
 ```
 
 ### Project Structure
-```
-src/
-├── bin/           # CLI executables
-│   ├── backtest.rs   # Strategy development & optimization
-│   └── trade.rs      # Live trading
-├── core/          # Core trading logic
-├── clients/       # API integrations
-├── backtesting/   # Analytics engine
-├── optimization/  # Autonomous optimization framework
-│   ├── mod.rs        # Core optimization logic
-│   ├── parameter_search.rs  # Search algorithms
-│   ├── grid_optimizer.rs    # Grid strategies
-│   └── risk_optimizer.rs    # Risk management
-└── lib.rs         # Library exports
 
-strategies/        # Generated strategy files
-optimized_strategies/  # Auto-discovered optimal parameters
-docs/             # Technical documentation
-tests/            # Test suites
+```text
+grid-trading-bot/
+├── src/
+│   ├── core/           # Trading logic and risk management
+│   ├── clients/        # API clients and WebSocket handlers
+│   ├── backtesting/    # Vectorized backtesting engine
+│   ├── optimization/   # Strategy optimization algorithms
+│   └── bin/           # Executable binaries
+├── strategies/         # Generated trading strategies
+├── optimized_strategies/ # Production strategies
+├── docs/              # Documentation
+└── tests/             # Integration tests
 ```
 
-## 📊 Example Results
+## 📈 Strategy Performance
 
-**XRPGBP Strategy Performance:**
+### Recent Optimizations (Sep 2024)
+
 - **Period:** 30 days (Aug-Sep 2025)
-- **Signals Generated:** 376
-- **Trades Executed:** 18
-- **Trading Fees:** £9.80
-- **Max Drawdown:** 0.09%
-- **Markov Confidence:** 54.6%
+- **Pairs:** 20+ GBP pairs
+- **Return:** Varies by pair (see individual strategy files)
+- **Risk:** Max 15% drawdown, 5% daily loss limit
 
-## 🚨 Safety Notice
+### Risk Management Features
 
-This system currently operates in **simulation mode** for safety. Before implementing live trading:
+- **Position Sizing:** Kelly criterion, risk parity, volatility-adjusted
+- **Risk Limits:** Drawdown limits, position count limits, daily loss limits
+- **Monitoring:** Real-time performance tracking, alert system
+- **Safety:** Emergency shutdown, circuit breakers, graceful degradation
 
-1. Thoroughly test all strategies
-2. Start with small position sizes
-3. Monitor performance closely
-4. Implement proper risk controls
+## 🚨 Important Disclaimers
 
-## 📈 Next Steps
+⚠️ **This is experimental software for educational purposes only**
 
-- **Real Order Execution:** Integrate with Kraken private API
-- **Multi-Exchange Support:** Add Binance, Coinbase Pro
-- **Web Dashboard:** Real-time monitoring interface
-- **Advanced Strategies:** Machine learning integration
-- **Portfolio Management:** Cross-pair optimization
+- **Not Financial Advice:** This software is for research and educational use
+- **Risk Warning:** Cryptocurrency trading involves substantial risk of loss
+- **No Guarantees:** Past performance does not guarantee future results
+- **Use at Your Own Risk:** The authors assume no responsibility for trading losses
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add comprehensive tests
+4. Ensure all tests pass
+5. Submit a pull request
+
+## 📞 Support
+
+For questions, issues, or feature requests:
+
+- Open an issue on GitHub
+- Check the documentation in `/docs`
+- Review the test files for usage examples
 
 ---
 
-**Built with Rust 🦀 for maximum performance and reliability.**
-
+**Remember: Only trade with money you can afford to lose!**

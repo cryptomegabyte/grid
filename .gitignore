@@ -18,7 +18,6 @@ Thumbs.db
 
 # Generated files
 strategies/
-optimized_strategies/
 portfolio_analysis.md
 optimization_report.md
 *_optimization_analysis.md

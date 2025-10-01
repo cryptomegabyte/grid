@@ -145,3 +145,110 @@ impl GridTrader {
         self.market_analyzer.current_state()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::types::{GridSignal, MarketState};
+    use crate::config::{TradingConfig, MarketConfig};
+
+    fn create_test_config() -> (TradingConfig, MarketConfig) {
+        let trading_config = TradingConfig {
+            kraken_ws_url: "wss://ws.kraken.com".to_string(),
+            trading_pair: "XRPGBP".to_string(),
+            grid_levels: 3,
+            grid_spacing: 0.01,
+            min_price_change: 0.001,
+        };
+
+        let market_config = MarketConfig {
+            trend_threshold: 0.005,
+            volatility_threshold: 0.02,
+            price_history_size: 10,
+        };
+
+        (trading_config, market_config)
+    }
+
+    #[test]
+    fn test_grid_trader_initialization() {
+        let (trading_config, market_config) = create_test_config();
+        let trader = GridTrader::new(trading_config.clone(), market_config);
+
+        assert_eq!(trader.buy_levels().len(), 0);
+        assert_eq!(trader.sell_levels().len(), 0);
+        assert_eq!(trader.current_price(), 0.0);
+    }
+
+    #[test]
+    fn test_grid_setup() {
+        let (trading_config, market_config) = create_test_config();
+        let mut trader = GridTrader::new(trading_config, market_config);
+
+        let initial_price = 1.0;
+        let signal = trader.update_with_price(initial_price);
+
+        assert_eq!(signal, GridSignal::None);
+        assert_eq!(trader.current_price(), initial_price);
+        assert_eq!(trader.buy_levels().len(), 3);
+        assert_eq!(trader.sell_levels().len(), 3);
+    }
+
+    #[test]
+    fn test_buy_signal_generation() {
+        let (trading_config, market_config) = create_test_config();
+        let mut trader = GridTrader::new(trading_config, market_config);
+
+        trader.update_with_price(1.0);
+        let buy_signal = trader.update_with_price(0.99);
+        
+        match buy_signal {
+            GridSignal::Buy(level) => assert!((level - 0.99).abs() < 1e-10),
+            _ => panic!("Expected buy signal"),
+        }
+    }
+
+    #[test]
+    fn test_sell_signal_generation() {
+        let (trading_config, market_config) = create_test_config();
+        let mut trader = GridTrader::new(trading_config, market_config);
+
+        trader.update_with_price(1.0);
+        let sell_signal = trader.update_with_price(1.01);
+        
+        match sell_signal {
+            GridSignal::Sell(level) => assert!((level - 1.01).abs() < 1e-10),
+            _ => panic!("Expected sell signal"),
+        }
+    }
+
+    #[test]
+    fn test_no_duplicate_signals() {
+        let (trading_config, market_config) = create_test_config();
+        let mut trader = GridTrader::new(trading_config, market_config);
+
+        trader.update_with_price(1.0);
+        let first_signal = trader.update_with_price(0.99);
+        assert!(matches!(first_signal, GridSignal::Buy(_)));
+
+        let duplicate_signal = trader.update_with_price(0.99);
+        assert_eq!(duplicate_signal, GridSignal::None);
+    }
+
+    #[test]
+    fn test_market_state_detection() {
+        let market_config = MarketConfig {
+            trend_threshold: 0.01,
+            volatility_threshold: 0.02,
+            price_history_size: 5,
+        };
+
+        let mut analyzer = MarketAnalyzer::new(market_config);
+        let trending_prices = vec![1.0, 1.002, 1.004, 1.006, 1.015];
+        for price in trending_prices {
+            analyzer.update_with_price(price);
+        }
+
+        assert_eq!(analyzer.current_state(), MarketState::TrendingUp);
+    }
+}

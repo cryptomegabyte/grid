@@ -175,6 +175,7 @@ async fn run_demo_backtest(pair: &str) -> Result<(), Box<dyn std::error::Error>>
     };
 
     // Save strategy
+    fs::create_dir_all("strategies")?;
     let filename = format!("strategies/{}_strategy.json", pair.to_lowercase());
     let json = serde_json::to_string_pretty(&strategy)?;
     fs::write(&filename, json)?;
@@ -443,11 +444,12 @@ async fn optimize_gbp_pairs(
                         generated_at: Utc::now(),
                     };
                     
-                    // Create optimized strategies directory
-                    fs::create_dir_all("optimized_strategies")?;
-                    let filename = format!("optimized_strategies/{}_optimized.json", pair.to_lowercase());
+                    // Create strategies directory
+                    fs::create_dir_all("strategies")?;
+                    let filename = format!("strategies/{}_strategy.json", pair.to_lowercase());
                     let json = serde_json::to_string_pretty(&optimized_strategy)?;
                     fs::write(&filename, json)?;
+                    info!("💾 Optimized strategy saved: {}", filename);
                 }
                 all_optimization_results.extend(results);
             }
@@ -468,7 +470,7 @@ async fn optimize_gbp_pairs(
     }
     
     info!("🎉 Autonomous optimization completed!");
-    info!("📁 Optimized strategies saved in: optimized_strategies/");
+    info!("📁 Optimized strategies saved in: strategies/");
     
     Ok(())
 }
@@ -563,7 +565,7 @@ async fn optimize_single_pair(
     };
     
     fs::create_dir_all("optimized_strategies")?;
-    let filename = format!("optimized_strategies/{}_comprehensive.json", pair.to_lowercase());
+    let filename = format!("strategies/{}_comprehensive.json", pair.to_lowercase());
     let json = serde_json::to_string_pretty(&optimized_strategy)?;
     fs::write(&filename, json)?;
     

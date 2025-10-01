@@ -101,9 +101,76 @@ Simple commands for common workflows:
 make              # Show available commands
 make backtest     # Run optimization on 10 pairs
 make full-workflow # Complete: optimization + paper trading test
-make test         # Run cargo tests
+make simulation   # Run simulation engine example
+make test         # Run all tests
+make test-sim     # Run simulation engine tests only
+make build        # Build release binaries
 make clean        # Clean build artifacts
 ```
+
+## Simulation Engine 🎮
+
+The simulation engine provides a fully-fledged local exchange simulator that replicates Kraken's order matching and execution behavior.
+
+### Quick Demo
+
+```bash
+# Run the simulation example
+make simulation
+
+# Run simulation tests
+make test-sim
+```
+
+### Key Features
+
+- **Local Order Book**: Real-time order book state from Kraken WebSocket
+- **Realistic Matching**: Price-time priority with partial fills
+- **Execution Simulation**: Latency (50-200ms), slippage, fees (0.16% maker, 0.26% taker)
+- **Market Impact Analysis**: Pre-calculate impact before execution
+- **Performance Tracking**: Comprehensive statistics and metrics
+
+### Example Usage
+
+```rust
+use grid_trading_bot::simulation::{
+    SimulationEngine, OrderBookSnapshot,
+    matching_engine::{SimulatedOrder, OrderSide, OrderType},
+};
+
+// Create engine
+let mut engine = SimulationEngine::kraken_simulator();
+
+// Initialize order book
+let snapshot = OrderBookSnapshot {
+    pair: "ETHGBP".to_string(),
+    bids: vec![(2500.0, 2.0), (2499.0, 3.0)],
+    asks: vec![(2501.0, 2.0), (2502.0, 3.0)],
+    timestamp: Utc::now(),
+};
+engine.initialize_order_book("ETHGBP".to_string(), snapshot);
+
+// Execute order
+let order = SimulatedOrder {
+    id: "order-1".to_string(),
+    pair: "ETHGBP".to_string(),
+    side: OrderSide::Buy,
+    order_type: OrderType::Market,
+    price: None,
+    quantity: 3.0,
+    timestamp: Utc::now(),
+};
+
+let result = engine.execute_order(order)?;
+println!("Filled: {} @ £{:.2}", result.total_filled, result.average_price);
+println!("Fees: £{:.2} | Slippage: £{:.2}", result.total_fees, result.total_slippage);
+```
+
+### Documentation
+
+- **Quick Start**: [docs/SIMULATION_QUICKSTART.md](docs/SIMULATION_QUICKSTART.md)
+- **Full Documentation**: [docs/SIMULATION_ENGINE.md](docs/SIMULATION_ENGINE.md)
+- **Example Code**: [examples/simulation_engine.rs](examples/simulation_engine.rs)
 
 ## Configuration
 
@@ -145,6 +212,12 @@ grid-trading-bot/
 │   │   ├── grid_trader.rs       # Core trading logic
 │   │   ├── market_state.rs      # Market analysis
 │   │   └── live_trading.rs      # Live trading engine
+│   ├── simulation/              # 🆕 Simulation Engine
+│   │   ├── order_book.rs        # Local order book manager
+│   │   ├── matching_engine.rs   # Order matching logic
+│   │   ├── execution_simulator.rs # Realistic execution
+│   │   ├── simulation_engine.rs # Engine orchestrator
+│   │   └── adapter.rs           # Integration adapter
 │   ├── backtesting/
 │   │   ├── engine.rs            # Backtesting engine
 │   │   ├── vectorized.rs        # Vectorized operations
@@ -162,6 +235,11 @@ grid-trading-bot/
 │   ├── error.rs                 # Error handling
 │   ├── validation.rs            # Pre-flight validation
 │   └── progress.rs              # Progress bars
+├── examples/
+│   └── simulation_engine.rs     # 🆕 Simulation example
+├── docs/
+│   ├── SIMULATION_ENGINE.md     # 🆕 Full documentation
+│   └── SIMULATION_QUICKSTART.md # 🆕 Quick start guide
 ├── config.toml                  # Your configuration
 ├── data/
 │   └── grid_bot.db             # SQLite database
@@ -173,7 +251,7 @@ grid-trading-bot/
 **Version**: 0.2.0  
 **Status**: Active Development
 
-### Completed (Phases 1-6)
+### Completed (Phases 1-7)
 
 - ✅ Unified CLI binary
 - ✅ TOML configuration system
@@ -181,6 +259,16 @@ grid-trading-bot/
 - ✅ Custom error types with helpful messages
 - ✅ Pre-flight validation system
 - ✅ Progress bars and UX improvements
+- ✅ **Simulation Engine** - Local exchange simulator with realistic order matching
+
+### Recent Additions (Phase 7)
+
+- ✅ Local order book manager with real-time updates
+- ✅ Order matching engine (Market, Limit, Post-Only orders)
+- ✅ Execution simulator with latency, slippage, and fees
+- ✅ Market impact analysis
+- ✅ Comprehensive test suite (14 tests, all passing)
+- ✅ Full documentation and examples
 
 ### In Progress
 

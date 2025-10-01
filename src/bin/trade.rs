@@ -32,6 +32,9 @@ enum Commands {
         /// Trading duration in minutes (optional, alternative to hours)
         #[arg(short, long)]
         minutes: Option<f64>,
+        /// Use simulation engine with local order book (paper trading mode)
+        #[arg(long)]
+        simulate: bool,
     },
     /// Demo single pair trading
     Demo {
@@ -60,14 +63,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     
     match cli.command {
-        Commands::Start { capital, strategies_dir, hours, minutes } => {
+        Commands::Start { capital, strategies_dir, hours, minutes, simulate } => {
             let duration = calculate_trading_duration(hours, minutes);
             if let Some(duration) = duration {
                 info!("🚀 Starting live trading simulation with £{:.2} for {:.1} hours", capital, duration.as_secs_f64() / 3600.0);
             } else {
                 info!("🚀 Starting live trading simulation with £{:.2} (indefinite)", capital);
             }
-            run_live_trading_simulation(capital, &strategies_dir, duration).await?;
+            if simulate {
+                info!("🎮 Simulation engine enabled - Using local order book");
+            }
+            run_live_trading_simulation(capital, &strategies_dir, duration, simulate).await?;
         }
         Commands::Demo { pair } => {
             info!("🎯 Starting demo live trading for {}", pair);
@@ -93,13 +99,19 @@ fn calculate_trading_duration(hours: Option<f64>, minutes: Option<f64>) -> Optio
     }
 }
 
-async fn run_live_trading_simulation(capital: f64, strategies_dir: &str, duration: Option<Duration>) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_live_trading_simulation(capital: f64, strategies_dir: &str, duration: Option<Duration>, use_simulation: bool) -> Result<(), Box<dyn std::error::Error>> {
     info!("🔧 Initializing live trading engine with £{:.2} capital", capital);
     
     // Create trading engine with real market data
     let mut engine = LiveTradingEngine::new(capital)
         .with_real_data(true)
         .with_grid_mode(GridMode::VolatilityAdaptive);
+    
+    // Enable simulation engine if requested
+    if use_simulation {
+        engine = engine.with_simulation_engine(true);
+        info!("🎮 Simulation engine initialized with local order book");
+    }
     
     // Load all optimized strategies
     let loaded_count = engine.load_optimized_strategies(strategies_dir)?;

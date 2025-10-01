@@ -12,6 +12,7 @@ pub mod validation;  // Pre-flight validation
 pub mod progress;    // Progress bars and UX feedback
 pub mod backtesting;
 pub mod optimization;
+pub mod simulation;  // Realistic exchange simulation engine
 
 // Re-export core trading types
 pub use core::{MarketState, GridSignal, GridTrader, MarketAnalyzer};
@@ -52,4 +53,12 @@ pub use optimization::{
     parameter_search::{ParameterSearchEngine, SearchStrategy},
     grid_optimizer::{GridOptimizer, GridStrategy},
     risk_optimizer::{RiskOptimizer, RiskModel, RiskMetrics},
+};
+
+// Re-export simulation components
+pub use simulation::{
+    LocalOrderBook, OrderBookSnapshot, OrderBookUpdate,
+    OrderMatchingEngine, MatchResult, FillInfo,
+    ExecutionSimulator, ExecutionResult, SlippageModel,
+    SimulationEngine, SimulationConfig,
 };

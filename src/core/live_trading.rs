@@ -10,6 +10,7 @@ use tracing::{info, warn, error, debug};
 use uuid::Uuid;
 use rand::{thread_rng, Rng};
 use crate::clients::kraken_ws::{KrakenWebSocketClient, MarketData, OHLCData};
+use crate::simulation::SimulationAdapter;
 use futures_util::StreamExt;
 use tokio_tungstenite::tungstenite::protocol::Message;
 use serde_json::Value;
@@ -102,6 +103,9 @@ pub struct LiveTradingEngine {
     ws_client: Option<KrakenWebSocketClient>,
     use_real_data: bool,
     grid_mode: GridMode,
+    // New: Simulation engine for realistic order execution
+    simulation_engine: Option<SimulationAdapter>,
+    use_simulation_engine: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -198,12 +202,14 @@ impl LiveTradingEngine {
             trade_history: Vec::new(),
             kraken_client: reqwest::Client::new(),
             current_prices: HashMap::new(),
-            trade_log_file: format!("trade_log_{}.csv", timestamp),
-            portfolio_log_file: format!("portfolio_log_{}.csv", timestamp),
+            trade_log_file: format!("logs/trades/trade_log_{}.csv", timestamp),
+            portfolio_log_file: format!("logs/portfolio/portfolio_log_{}.csv", timestamp),
             last_portfolio_update: Instant::now(),
             ws_client: None,
             use_real_data: true,
             grid_mode: GridMode::VolatilityAdaptive,
+            simulation_engine: Some(SimulationAdapter::new()),
+            use_simulation_engine: true,
         }
     }
 
@@ -214,6 +220,15 @@ impl LiveTradingEngine {
 
     pub fn with_grid_mode(mut self, mode: GridMode) -> Self {
         self.grid_mode = mode;
+        self
+    }
+
+    /// Enable/disable simulation engine for order execution
+    pub fn with_simulation_engine(mut self, enable: bool) -> Self {
+        self.use_simulation_engine = enable;
+        if enable && self.simulation_engine.is_none() {
+            self.simulation_engine = Some(SimulationAdapter::new());
+        }
         self
     }
 
@@ -716,6 +731,17 @@ impl LiveTradingEngine {
                 match message {
                     Ok(Message::Text(text)) => {
                         if let Ok(data) = serde_json::from_str::<Value>(&text) {
+                            // Update simulation engine with order book data
+                            if let Some(sim_engine) = &mut self.simulation_engine {
+                                // Try to parse as order book update
+                                if let Some(_order_book) = crate::clients::kraken_ws::parse_kraken_orderbook(&data) {
+                                    if let Some(pair_name) = data.get(3).and_then(|p| p.as_str()) {
+                                        sim_engine.update_from_kraken_ws(pair_name, &data);
+                                        debug!("📖 Updated simulation order book for {}", pair_name);
+                                    }
+                                }
+                            }
+                            
                             // Handle different message types
                             if let Some(market_data) = crate::clients::kraken_ws::parse_kraken_ticker(&data) {
                                 market_updates.push(market_data);
@@ -1009,6 +1035,78 @@ impl LiveTradingEngine {
     }
 
     async fn execute_simulated_order(&mut self, pair: &str, order: &SimulatedOrder) {
+        // Use simulation engine if enabled and available
+        if self.use_simulation_engine {
+            if let Some(sim_engine) = &mut self.simulation_engine {
+                if sim_engine.is_ready(pair) {
+                    // Execute using simulation engine
+                    match sim_engine.execute_live_order(order) {
+                        Ok(exec_result) => {
+                            use crate::simulation::execution_simulator::ExecutionStatus;
+                            
+                            if exec_result.status == ExecutionStatus::Success 
+                                || exec_result.status == ExecutionStatus::PartialFill {
+                                // Create trade record
+                                let trade = SimulatedTrade {
+                                    id: order.id.clone(),
+                                    pair: pair.to_string(),
+                                    side: order.side.clone(),
+                                    price: exec_result.average_price,
+                                    quantity: exec_result.total_filled,
+                                    fee: exec_result.total_fees,
+                                    timestamp: exec_result.timestamp,
+                                    execution_delay_ms: exec_result.execution_time_ms,
+                                    slippage: exec_result.total_slippage,
+                                };
+
+                                // Update portfolio
+                                self.update_portfolio_from_trade(&trade);
+                                
+                                // Update strategy position
+                                let trade_value = trade.price * trade.quantity;
+                                if let Some(strategy) = self.strategies.get_mut(pair) {
+                                    match trade.side.as_str() {
+                                        "buy" => {
+                                            strategy.current_position += trade.quantity;
+                                            strategy.available_capital -= trade_value + trade.fee;
+                                        }
+                                        "sell" => {
+                                            strategy.current_position -= trade.quantity;
+                                            strategy.available_capital += trade_value - trade.fee;
+                                        }
+                                        _ => {}
+                                    }
+
+                                    // Update order status
+                                    for active_order in &mut strategy.active_orders {
+                                        if active_order.id == order.id {
+                                            active_order.status = OrderStatus::Filled;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                // Log trade
+                                self.log_trade(&trade);
+                                self.trade_history.push(trade.clone());
+
+                                info!("✅ EXECUTED (SIM ENGINE): {} {} {} @ £{:.6} | Fee: £{:.2} | Slippage: £{:.2} | Latency: {}ms", 
+                                      trade.side.to_uppercase(), trade.quantity, trade.pair, 
+                                      trade.price, trade.fee, trade.slippage, trade.execution_delay_ms);
+                                return;
+                            } else {
+                                warn!("⚠️ Order execution failed in simulation engine: {:?}", exec_result.status);
+                            }
+                        }
+                        Err(e) => {
+                            warn!("⚠️ Simulation engine error: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback to old simulation method if engine not available
         let mut rng = thread_rng();
         
         // Calculate realistic execution price with slippage
@@ -1130,6 +1228,11 @@ impl LiveTradingEngine {
             trade.id
         );
         
+        // Ensure logs directory exists
+        if let Some(parent) = std::path::Path::new(&self.trade_log_file).parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        
         if let Ok(mut file) = OpenOptions::new()
             .create(true)
             .append(true)
@@ -1158,6 +1261,11 @@ impl LiveTradingEngine {
             summary.active_strategies
         );
         
+        // Ensure logs directory exists
+        if let Some(parent) = std::path::Path::new(&self.portfolio_log_file).parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        
         if let Ok(mut file) = OpenOptions::new()
             .create(true)
             .append(true)
@@ -1182,8 +1290,14 @@ impl LiveTradingEngine {
                     summary.total_value,
                     summary.total_return,
                     summary.total_trades,
-                    self.count_active_orders()
-                );
+                    summary.active_orders);
+                
+                // Log simulation engine stats if enabled
+                if self.use_simulation_engine {
+                    if let Some(sim_engine) = &self.simulation_engine {
+                        info!("🎮 {}", sim_engine.get_stats());
+                    }
+                }
                 
                 // Log top performing pairs
                 if !self.trade_history.is_empty() {
@@ -1220,6 +1334,7 @@ impl LiveTradingEngine {
             active_strategies: self.strategies.len(),
             total_trades: self.trade_history.len(),
             total_fees: self.portfolio.total_fees_paid,
+            active_orders: self.count_active_orders(),
         }
     }
 }
@@ -1234,6 +1349,7 @@ pub struct PortfolioSummary {
     pub active_strategies: usize,
     pub total_trades: usize,
     pub total_fees: f64,
+    pub active_orders: usize,
 }
 
 #[cfg(test)]

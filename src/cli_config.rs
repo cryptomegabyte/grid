@@ -123,23 +123,20 @@ impl Default for DatabaseConfig {
 }
 
 impl CliConfig {
-    /// Load configuration from TOML file
+    /// Load configuration from a file
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, CliConfigError> {
-        let path_ref = path.as_ref();
-        
-        if !path_ref.exists() {
-            return Err(CliConfigError::FileNotFound(
-                path_ref.display().to_string()
-            ));
-        }
+        Self::from_file_with_options(path, false)
+    }
 
-        let content = fs::read_to_string(path_ref)
+    /// Load configuration from a file with options
+    pub fn from_file_with_options<P: AsRef<Path>>(path: P, skip_api_keys: bool) -> Result<Self, CliConfigError> {
+        let content = fs::read_to_string(path.as_ref())
             .map_err(|e| CliConfigError::FileRead(e.to_string()))?;
         
-        let config: CliConfig = toml::from_str(&content)
+        let config: Self = toml::from_str(&content)
             .map_err(|e| CliConfigError::Parse(e.to_string()))?;
         
-        config.validate()?;
+        config.validate(skip_api_keys)?;
         Ok(config)
     }
 
@@ -161,19 +158,21 @@ impl CliConfig {
         Self::from_file(path_ref)
     }
 
-    /// Validate configuration
-    fn validate(&self) -> Result<(), CliConfigError> {
-        // Check API keys are not placeholders
-        if self.api.api_key.contains("YOUR_API_KEY") {
-            return Err(CliConfigError::Validation(
-                "API key not configured. Edit config.toml with your Kraken API key".to_string()
-            ));
-        }
+    /// Validate configuration (optionally skip API key validation for backtesting)
+    fn validate(&self, skip_api_keys: bool) -> Result<(), CliConfigError> {
+        // Check API keys are not placeholders (skip for backtesting)
+        if !skip_api_keys {
+            if self.api.api_key.contains("YOUR_API_KEY") {
+                return Err(CliConfigError::Validation(
+                    "API key not configured. Edit config.toml with your Kraken API key".to_string()
+                ));
+            }
 
-        if self.api.api_secret.contains("YOUR_API_SECRET") {
-            return Err(CliConfigError::Validation(
-                "API secret not configured. Edit config.toml with your Kraken API secret".to_string()
-            ));
+            if self.api.api_secret.contains("YOUR_API_SECRET") {
+                return Err(CliConfigError::Validation(
+                    "API secret not configured. Edit config.toml with your Kraken API secret".to_string()
+                ));
+            }
         }
 
         // Validate numeric ranges

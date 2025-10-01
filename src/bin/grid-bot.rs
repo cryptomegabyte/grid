@@ -3,7 +3,7 @@
 
 use clap::{Parser, Subcommand};
 use tracing::{info, warn, error};
-use grid_trading_bot::{CliConfig, TradingError, TradingResult};
+use grid_trading_bot::{CliConfig, CliConfigError, TradingError, TradingResult};
 
 // Load command modules from cli directory
 #[path = "../cli/backtest_commands.rs"]
@@ -255,12 +255,12 @@ async fn main() -> TradingResult<()> {
         
         // All other commands require valid config
         Commands::Optimize(cmd) => {
-            let config = load_config_or_exit(&cli.config)?;
+            let config = load_config_for_backtest(&cli.config)?;
             handle_optimize_command(cmd, config).await?;
         }
         
         Commands::Backtest(cmd) => {
-            let config = load_config_or_exit(&cli.config)?;
+            let config = load_config_for_backtest(&cli.config)?;
             handle_backtest_command(cmd, config).await?;
         }
         
@@ -276,6 +276,36 @@ async fn main() -> TradingResult<()> {
 /// Load config or exit with helpful error message
 fn load_config_or_exit(path: &str) -> TradingResult<CliConfig> {
     match CliConfig::load_or_error(path) {
+        Ok(config) => Ok(config),
+        Err(e) => {
+            let trading_err: TradingError = e.into();
+            error!("❌ {}", trading_err.category().to_uppercase());
+            error!("{}", trading_err.user_message());
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Load config for backtesting/optimization (API keys not required)
+fn load_config_for_backtest(path: &str) -> TradingResult<CliConfig> {
+    use std::path::Path;
+    
+    if !Path::new(path).exists() {
+        let err = CliConfigError::NotInitialized(
+            format!(
+                "Config file not found: {}\n\
+                 Run: grid-bot init\n\
+                 Then edit config.toml with your parameters",
+                path
+            )
+        );
+        let trading_err: TradingError = err.into();
+        error!("❌ {}", trading_err.category().to_uppercase());
+        error!("{}", trading_err.user_message());
+        std::process::exit(1);
+    }
+    
+    match CliConfig::from_file_with_options(path, true) {
         Ok(config) => Ok(config),
         Err(e) => {
             let trading_err: TradingError = e.into();

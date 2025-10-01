@@ -50,7 +50,8 @@ fn test_complete_trading_workflow() {
     let sell_count = signals.iter().filter(|s| matches!(s, grid_trading_bot::GridSignal::Sell(_))).count();
     
     // Should have some activity (or all holds in stable market)
-    assert!(buy_count + sell_count >= 0);
+    // Note: buy_count and sell_count are unsigned, so >= 0 is always true
+    let _total_signals = buy_count + sell_count;
     
     // Step 5: Verify strategy is still retrievable
     let retrieved = strategy_service.find_by_pair("XRPGBP")
@@ -266,7 +267,7 @@ fn test_strategy_export() {
     strategy.take_profit_pct = Some(0.05);
     strategy.max_position_size = Some(5000.0);
     
-    let id = strategy_service.save_strategy(&strategy)
+    let _id = strategy_service.save_strategy(&strategy)
         .expect("Failed to create strategy");
     
     // Retrieve and export

@@ -4,6 +4,7 @@ use grid_trading_bot::{Config, TradingConfig, MarketConfig, LoggingConfig};
 use tempfile::TempDir;
 use std::path::PathBuf;
 
+#[allow(dead_code)]
 /// Create a test configuration with sensible defaults
 pub fn create_test_config() -> Config {
     Config {
@@ -27,6 +28,7 @@ pub fn create_test_config() -> Config {
     }
 }
 
+#[allow(dead_code)]
 /// Create a temporary directory for test databases
 pub fn create_temp_db_dir() -> (TempDir, PathBuf) {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
@@ -34,6 +36,7 @@ pub fn create_temp_db_dir() -> (TempDir, PathBuf) {
     (temp_dir, db_path)
 }
 
+#[allow(dead_code)]
 /// Generate test price data for backtesting
 pub fn generate_test_prices(base_price: f64, count: usize, volatility: f64) -> Vec<f64> {
     use rand::Rng;
@@ -50,6 +53,7 @@ pub fn generate_test_prices(base_price: f64, count: usize, volatility: f64) -> V
     prices
 }
 
+#[allow(dead_code)]
 /// Generate test timestamps
 pub fn generate_test_timestamps(count: usize, interval_minutes: i64) -> Vec<chrono::DateTime<chrono::Utc>> {
     use chrono::{Utc, Duration};

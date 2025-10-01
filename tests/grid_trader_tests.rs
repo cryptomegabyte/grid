@@ -8,7 +8,7 @@ use common::create_test_config;
 #[test]
 fn test_grid_trader_creation() {
     let config = create_test_config();
-    let trader = GridTrader::new(config.trading.clone(), config.market.clone());
+    let _trader = GridTrader::new(config.trading.clone(), config.market.clone());
     
     // Trader should be created successfully
     assert!(true, "GridTrader should be created");

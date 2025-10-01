@@ -2,9 +2,6 @@
 
 mod common;
 
-use grid_trading_bot::{
-    BacktestConfig, BacktestingEngine,
-};
 use common::{generate_test_prices, generate_test_timestamps};
 
 #[test]
@@ -37,7 +34,7 @@ fn test_performance_metrics_calculation() {
     let final_value = 11500.0;
     let total_trades = 50;
     let winning_trades = 30;
-    let losing_trades = 20;
+    let _losing_trades = 20;
     
     // Calculate basic metrics
     let total_return = final_value - initial_capital;

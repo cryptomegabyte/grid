@@ -99,9 +99,10 @@ Simple commands for common workflows:
 
 ```bash
 make              # Show available commands
+make trade-sim    # Paper trading with simulation engine (30 min, £500)
+make trade        # Interactive: choose mode, capital, and duration
+make trade-live   # Live trading without simulation (use with caution!)
 make backtest     # Run optimization on 10 pairs
-make full-workflow # Complete: optimization + paper trading test
-make simulation   # Run simulation engine example
 make test         # Run all tests
 make test-sim     # Run simulation engine tests only
 make build        # Build release binaries
@@ -110,27 +111,57 @@ make clean        # Clean build artifacts
 
 ## Simulation Engine 🎮
 
-The simulation engine provides a fully-fledged local exchange simulator that replicates Kraken's order matching and execution behavior.
+The simulation engine provides a fully-fledged local exchange simulator that replicates Kraken's order matching and execution behavior. **Now fully integrated into the live trading system!**
 
-### Quick Demo
+### Usage
 
 ```bash
-# Run the simulation example
-make simulation
+# Paper trading with simulation engine (recommended)
+make trade-sim
 
-# Run simulation tests
-make test-sim
+# Interactive mode - choose your settings
+make trade
+
+# Custom parameters
+cargo run --bin trade start --simulate --capital 1000 --strategies-dir strategies --hours 2
 ```
 
 ### Key Features
 
 - **Local Order Book**: Real-time order book state from Kraken WebSocket
-- **Realistic Matching**: Price-time priority with partial fills
+- **Realistic Matching**: Price-time priority with partial fills and market impact
 - **Execution Simulation**: Latency (50-200ms), slippage, fees (0.16% maker, 0.26% taker)
 - **Market Impact Analysis**: Pre-calculate impact before execution
+- **Multiple Slippage Models**: Fixed, SquareRoot, Linear, and Realistic
 - **Performance Tracking**: Comprehensive statistics and metrics
+- **Organized Logging**: Automatic CSV logs in `logs/portfolio/` and `logs/trades/`
 
-### Example Usage
+### Trading Modes
+
+**Paper Trading (with simulation)**:
+
+```bash
+cargo run --bin trade start --simulate --capital 500 --strategies-dir strategies --minutes 30
+```
+
+**Live Trading (without simulation)**:
+
+```bash
+cargo run --bin trade start --capital 500 --strategies-dir strategies --minutes 30
+```
+
+### How It Works
+
+When `--simulate` is enabled:
+
+1. ✅ Connects to Kraken WebSocket for real-time market data
+2. ✅ Maintains local order books for all trading pairs
+3. ✅ Simulates realistic order matching with market impact
+4. ✅ Applies latency, slippage, and Kraken's actual fee structure
+5. ✅ Logs all trades and portfolio changes to CSV files
+6. ✅ **Zero risk** - No real orders sent to exchange
+
+### Code Example
 
 ```rust
 use grid_trading_bot::simulation::{
@@ -166,11 +197,15 @@ println!("Filled: {} @ £{:.2}", result.total_filled, result.average_price);
 println!("Fees: £{:.2} | Slippage: £{:.2}", result.total_fees, result.total_slippage);
 ```
 
-### Documentation
+### Testing
 
-- **Quick Start**: [docs/SIMULATION_QUICKSTART.md](docs/SIMULATION_QUICKSTART.md)
-- **Full Documentation**: [docs/SIMULATION_ENGINE.md](docs/SIMULATION_ENGINE.md)
-- **Example Code**: [examples/simulation_engine.rs](examples/simulation_engine.rs)
+```bash
+# Run simulation engine tests
+make test-sim
+
+# Run all tests
+make test
+```
 
 ## Configuration
 
@@ -235,11 +270,9 @@ grid-trading-bot/
 │   ├── error.rs                 # Error handling
 │   ├── validation.rs            # Pre-flight validation
 │   └── progress.rs              # Progress bars
-├── examples/
-│   └── simulation_engine.rs     # 🆕 Simulation example
-├── docs/
-│   ├── SIMULATION_ENGINE.md     # 🆕 Full documentation
-│   └── SIMULATION_QUICKSTART.md # 🆕 Quick start guide
+├── logs/
+│   ├── portfolio/               # 🆕 Portfolio state logs (CSV)
+│   └── trades/                  # 🆕 Trade execution logs (CSV)
 ├── config.toml                  # Your configuration
 ├── data/
 │   └── grid_bot.db             # SQLite database
@@ -263,18 +296,20 @@ grid-trading-bot/
 
 ### Recent Additions (Phase 7)
 
-- ✅ Local order book manager with real-time updates
+- ✅ Local order book manager with real-time Kraken WebSocket updates
 - ✅ Order matching engine (Market, Limit, Post-Only orders)
 - ✅ Execution simulator with latency, slippage, and fees
-- ✅ Market impact analysis
+- ✅ Market impact analysis and multiple slippage models
+- ✅ Full integration into live trading system with `--simulate` flag
+- ✅ Organized logging structure (`logs/portfolio/`, `logs/trades/`)
+- ✅ Convenient Makefile commands for easy usage
 - ✅ Comprehensive test suite (14 tests, all passing)
-- ✅ Full documentation and examples
 
 ### In Progress
 
 - 🔄 Full CLI command integration
-- 🔄 Live trading engine completion
-- 🔄 WebSocket market data streaming
+- 🔄 Additional trading strategies
+- 🔄 Advanced risk management features
 
 ## Requirements
 

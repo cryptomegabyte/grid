@@ -1,77 +1,30 @@
-.PHONY: help build backtest optimize trade test clean
+.PHONY: help backtest full-workflow test clean
 
-# Default target - show help
 help:
-	@echo "🚀 Grid Trading Bot - Simple Commands"
+	@echo "🚀 Grid Trading Bot"
 	@echo ""
-	@echo "Essential Commands:"
-	@echo "  make backtest     - Run autonomous optimization (generates optimized strategies)"
-	@echo "  make trade        - Start LIVE trading with real market data (indefinite)"
-	@echo "  make trade-market - LIVE trade for 8 hours with real Kraken feeds"
-	@echo "  make trade-demo   - 5-minute LIVE demo with real data"
-	@echo "  make test         - Run all tests"
-	@echo "  make clean        - Clean everything" 
-	@echo ""
-	@echo "Advanced:"
-	@echo "  make optimize PAIR=ADAGBP    - Optimize specific pair"
-	@echo "  make trade-hours HOURS=6     - Trade for custom hours"
-	@echo "  make full-session HOURS=8    - Complete workflow: optimize + trade"
-	@echo ""
-	@echo "📁 All strategies saved to: strategies/"
+	@echo "Commands:"
+	@echo "  make backtest       - Run backtesting optimization"
+	@echo "  make full-workflow  - Complete: backtest + simulated trading"
+	@echo "  make test           - Run all tests"
+	@echo "  make clean          - Clean build artifacts"
 
-# Build the project
-build:
-	cargo build
-
-# Best backtest command - runs autonomous optimization with optimal settings
 backtest:
-	@echo "🎯 Running autonomous optimization (generates optimized strategies)..."
-	cargo run --bin backtest -- optimize-gbp --limit 10 --iterations 20 --strategy random-search
+	@echo "🎯 Running backtesting optimization..."
+	@cargo run --bin grid-bot -- backtest optimize --limit 10 --iterations 20
 
-# Optimize specific pair (usage: make optimize PAIR=ADAGBP)
-optimize:
-	@echo "🔍 Optimizing $(PAIR)..."
-	cargo run --bin backtest -- optimize-pair --pair $(PAIR) --iterations 10
+full-workflow:
+	@echo "🎯 Complete Trading Workflow"
+	@echo "📊 Phase 1: Backtesting Optimization"
+	@cargo run --bin grid-bot -- backtest optimize --limit 10 --iterations 20
+	@echo ""
+	@echo "✅ Optimization complete!"
+	@echo "📡 Phase 2: Simulated Trading (Dry-Run)"
+	@cargo run --bin grid-bot -- trade start --dry-run --capital 500
 
-# Start LIVE trading with real market data (indefinite)
-trade:
-	@echo "� Starting LIVE trading with real Kraken market data..."
-	@echo "🎯 Using adaptive grids based on volatility, support/resistance"
-	RUST_LOG=info cargo run --bin trade start
-
-# Trade for a specific number of hours with real data
-trade-hours:
-	@echo "� Starting LIVE trading with real market data for $(HOURS) hours..."
-	RUST_LOG=info cargo run --bin trade start --hours $(HOURS)
-
-# Trade for market hours (8 hours) with real data
-trade-market:
-	@echo "� Starting LIVE trading with real Kraken feeds for market hours (8h)..."
-	@echo "🎯 Using intelligent grid placement based on market conditions"
-	RUST_LOG=info cargo run --bin trade start --hours 8
-
-# Demo LIVE trading for 5 minutes with real market data
-trade-demo:
-	@echo "📡 Running 5-minute LIVE trading demo with real Kraken data..."
-	@echo "🎯 Testing adaptive grid intelligence"
-	RUST_LOG=info cargo run --bin trade start --minutes 5
-
-# Complete workflow: backtest optimization + live trading (usage: make full-session HOURS=8)
-full-session:
-	@echo "🎯 Starting complete trading session for $(HOURS) hours..."
-	@echo "📊 Phase 1: Running autonomous optimization..."
-	cargo run --bin backtest -- optimize-gbp --limit 10 --iterations 20 --strategy random-search
-	@echo "✅ Optimization complete! Starting live trading..."
-	@echo "📡 Phase 2: LIVE trading with optimized strategies for $(HOURS) hours"
-	@echo "🚀 Using real Kraken market data with adaptive grids"
-	RUST_LOG=info cargo run --bin trade start --hours $(HOURS)
-
-# Run tests
 test:
-	cargo test
+	@cargo test
 
-# Clean everything
 clean:
-	cargo clean
-	rm -rf strategies/ *.md
-	@echo "✅ Cleaned all artifacts"
+	@cargo clean
+	@echo "✅ Cleaned"

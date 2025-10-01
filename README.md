@@ -1,284 +1,224 @@
-# Professional Grid Trading System
+# Grid Trading Bot
 
-A high-performance cryptocurrency grid trading system built in Rust with vectorized backtesting, automatic strategy generation, and professional-grade architecture.
+Professional cryptocurrency grid trading system with automated strategy optimization and backtesting.
 
-## ⚡ New Unified CLI (v0.2.0)
-
-The bot now features a single professional command-line interface:
+## Quick Start
 
 ```bash
+# Clone and build
+git clone https://github.com/cryptomegabyte/grid.git
+cd grid
+cargo build --release
+
 # Initialize workspace
-./target/debug/grid-bot init
+./target/release/grid-bot init
 
-# Check system status
-./target/debug/grid-bot status
+# Edit config.toml with your settings
+nano config.toml
 
-# List available strategies
-./target/debug/grid-bot strategy list
+# Run optimization (no API keys needed)
+make backtest
 
-# Optimize all pairs (Phase 2 - coming soon)
-./target/debug/grid-bot optimize all --iterations 20
-
-# Start paper trading (Phase 2 - coming soon)
-./target/debug/grid-bot trade start --dry-run
-
-# See all commands
-./target/debug/grid-bot --help
+# Test with paper trading (no API keys needed)
+./target/release/grid-bot trade start --dry-run --capital 500
 ```
 
-**Note**: Full command integration is in progress. For now, use the legacy binaries for optimization and trading:
-- **Optimization**: `cargo run --bin backtest -- optimize-gbp`
-- **Trading**: `cargo run --bin trade start`
+## Features
 
-## 🚀 Quick Start (Legacy Binaries)
+- **Automated Optimization**: Find best parameters for your trading pairs
+- **Vectorized Backtesting**: Fast historical data analysis using Polars
+- **Paper Trading**: Test strategies risk-free before going live
+- **SQLite Database**: Persistent storage for strategies and trade history
+- **Progress Bars**: Real-time feedback during optimization
+- **Pre-flight Validation**: Catch errors before execution
 
-### 1. Autonomous Strategy Optimization
-
-```bash
-# Automatically optimize all GBP pairs
-cargo run --bin backtest -- optimize-gbp
-
-# Advanced optimization with genetic algorithm
-cargo run --bin backtest -- optimize-gbp --strategy genetic-algorithm --timeframes --risk-optimization
-
-# Optimize specific pair comprehensively
-cargo run --bin backtest -- optimize-pair --pair GBPUSD --comprehensive
-```
-
-### 2. Generate a Trading Strategy (Manual)
-
-```bash
-# Run vectorized backtest on XRPGBP
-make demo-backtest
-
-# Or use cargo directly
-cargo run --bin backtest demo
-```
-
-### 3. Start Live Trading Simulation
-
-```bash
-# Use the generated strategy
-make demo-trade
-
-# Or with detailed logging
-make trade-dev
-```
-
-### 3. View Results
-
-```text
-✅ Backtest completed!
-📊 Total Return: -0.09%
-📊 Total Trades: 18
-📊 Win Rate: 0.0%
-💾 Strategy saved: strategies/xrpgbp_strategy.json
-```
-
-## 🎯 Key Features
-
-### 🧠 Autonomous Optimization
-
-- **Multi-Pair Scanning:** Automatically discovers and optimizes all GBP pairs
-- **Intelligent Parameter Search:** Grid search, random search, genetic algorithms, Bayesian optimization
-
-### Professional Architecture
-
-- **Modular Design:** Separate core/, clients/, and backtesting/ modules
-- **Error Handling:** Circuit breakers, retry mechanisms with exponential backoff
-- **Performance:** Vectorized operations with Polars and ndarray
-- **Production Ready:** Comprehensive logging, monitoring, and alerts
-
-### Advanced Analytics
-
-- **Vectorized Backtesting:** Process 1000+ data points per second
-- **Markov Chain Analysis:** Predict market state transitions
-- **Risk Management:** Position sizing, drawdown limits, portfolio optimization
-- **Technical Indicators:** RSI, Bollinger Bands, EMAs, support/resistance
-
-### Production Ready
-
-- **Multi-Pair Support:** Automatic GBP pair discovery from Kraken
-- **Real-time Monitoring:** Live performance tracking and alerts
-- **Safety Features:** Circuit breakers, emergency shutdown, risk limits
-- **Transaction Cost Modeling:** Realistic slippage, market impact, fees
-
-## 📖 Usage Examples
-
-### Autonomous Optimization
-
-```bash
-# Optimize all available GBP pairs with genetic algorithm
-cargo run --bin backtest -- optimize-all --pairs GBP --strategy genetic --generations 50
-
-# Comprehensive optimization with risk management
-cargo run --bin backtest -- optimize-comprehensive --risk-optimization --max-drawdown 0.15
-```
-
-### Research & Development
-
-```bash
-# Test new optimization strategies
-cargo run --bin backtest -- experiment --strategy bayesian --iterations 100
-
-# Generate comprehensive analysis report
-cargo run --bin backtest -- analyze-performance --pair XRPGBP --timeframe 1h
-```
-
-### Live Trading
-
-```bash
-# Start live trading with monitoring
-cargo run --bin trade -- --config production.toml --enable-monitoring
-
-# Paper trading mode
-cargo run --bin trade -- --paper-trading --log-level debug
-```
-
-### Development
-
-```bash
-# Run all tests
-cargo test
-
-# Run with optimization features
-cargo build --release --features optimization
-
-# Generate documentation
-cargo doc --open
-```
-
-Expected output:
-
-```text
-🚀 Grid Trading System v0.1.0
-✅ All systems operational
-📊 Monitoring enabled
-💹 Ready for trading
-```
-
-## 📁 Project Structure
-
-- `src/core/` - Grid trading logic and market analysis
-- `src/clients/` - Kraken API and WebSocket clients
-- `src/backtesting/` - Vectorized backtesting engine
-- `src/optimization/` - Strategy optimization algorithms
-- `strategies/` - Generated trading strategies
-- `optimized_strategies/` - Production-ready optimized strategies
-- `docs/` - Detailed documentation and analysis
-
-## 🔧 Architecture
-
-The system uses a modular architecture with clear separation of concerns:
-
-```mermaid
-graph TD
-    A[Market Data] --> B[Grid Trader]
-    B --> C[Position Manager]
-    C --> D[Risk Management]
-    D --> E[Order Execution]
-    E --> F[Performance Monitoring]
-    F --> G[Alert System]
-```
-
-## 📊 Performance Metrics
-
-### Backtesting Performance
-
-- Unit tests for core trading logic
-- Integration tests for complete workflows
-- Property-based testing for edge cases
-- Performance benchmarks for optimization
-
-### Vectorized Processing
-
-- Tests 100+ parameter combinations per minute
-- Processes 1000+ price points per second
-- Supports multiple timeframes simultaneously
-
-### Real-time Performance
-
-- <50ms WebSocket latency
-- Sub-second trade execution
-- Real-time monitoring and alerts
-
-## 🛠️ Installation
-
-### Prerequisites
-
-- Rust 1.70+ (2021 edition)
-- Git
+## Commands
 
 ### Setup
 
 ```bash
-git clone https://github.com/your-repo/grid-trading-bot
-cd grid-trading-bot
-cargo build --release
-cargo test
+# Initialize configuration and database
+grid-bot init
+
+# Check system status
+grid-bot status
 ```
 
-### Project Structure
+### Strategy Management
+
+```bash
+# List all strategies
+grid-bot strategy list
+
+# Show strategy details
+grid-bot strategy show ETHGBP
+
+# Export strategy
+grid-bot strategy export ETHGBP > my_strategy.json
+```
+
+### Optimization
+
+```bash
+# Optimize all GBP pairs
+grid-bot optimize all --limit 10 --iterations 20
+
+# Optimize specific pair
+grid-bot optimize pair ETHGBP --iterations 50 --comprehensive
+```
+
+### Backtesting
+
+```bash
+# Quick demo backtest
+grid-bot backtest demo ETHGBP
+
+# Custom backtest
+grid-bot backtest run ETHGBP --levels 10 --spacing 0.02
+
+# Scan multiple pairs
+grid-bot backtest scan --limit 5
+```
+
+### Trading
+
+```bash
+# Paper trading (no API keys needed)
+grid-bot trade start --dry-run --capital 500
+
+# Live trading (requires API keys)
+grid-bot trade start --capital 500 --hours 8
+
+# Trade specific pairs
+grid-bot trade start --pairs ETHGBP,BTCGBP --dry-run
+```
+
+## Makefile Commands
+
+Simple commands for common workflows:
+
+```bash
+make              # Show available commands
+make backtest     # Run optimization on 10 pairs
+make full-workflow # Complete: optimization + paper trading test
+make test         # Run cargo tests
+make clean        # Clean build artifacts
+```
+
+## Configuration
+
+Edit `config.toml` to customize your settings:
+
+```toml
+[api]
+api_key = "YOUR_API_KEY_HERE"       # Only needed for live trading
+api_secret = "YOUR_API_SECRET_HERE" # Only needed for live trading
+
+[trading]
+default_capital = 500.0              # Starting capital
+default_grid_levels = 10             # Number of grid levels
+default_grid_spacing = 0.02          # Spacing between levels (2%)
+max_position_size = 0.1              # Max 10% per position
+risk_limit_per_trade = 0.02          # Risk 2% per trade
+
+[backtesting]
+default_lookback_days = 90           # Historical data period
+default_timeframe_minutes = 60       # 1-hour candles
+
+[optimization]
+grid_levels_range = [5, 15]          # Test 5-15 levels
+grid_spacing_range = [0.01, 0.05]    # Test 1-5% spacing
+iterations = 20                       # Optimization iterations
+```
+
+## Architecture
 
 ```text
 grid-trading-bot/
 ├── src/
-│   ├── core/           # Trading logic and risk management
-│   ├── clients/        # API clients and WebSocket handlers
-│   ├── backtesting/    # Vectorized backtesting engine
-│   ├── optimization/   # Strategy optimization algorithms
-│   └── bin/           # Executable binaries
-├── strategies/         # Generated trading strategies
-├── optimized_strategies/ # Production strategies
-├── docs/              # Documentation
-└── tests/             # Integration tests
+│   ├── bin/
+│   │   └── grid-bot.rs          # Unified CLI entry point
+│   ├── cli/
+│   │   ├── backtest_commands.rs # Backtest command handlers
+│   │   └── trade_commands.rs    # Trade command handlers
+│   ├── core/
+│   │   ├── grid_trader.rs       # Core trading logic
+│   │   ├── market_state.rs      # Market analysis
+│   │   └── live_trading.rs      # Live trading engine
+│   ├── backtesting/
+│   │   ├── engine.rs            # Backtesting engine
+│   │   ├── vectorized.rs        # Vectorized operations
+│   │   └── analytics.rs         # Performance metrics
+│   ├── optimization/
+│   │   ├── mod.rs               # Parameter optimization
+│   │   └── grid_optimizer.rs    # Grid strategy optimizer
+│   ├── db/
+│   │   ├── strategy.rs          # Strategy database
+│   │   └── trade.rs             # Trade history
+│   ├── clients/
+│   │   ├── kraken_api.rs        # Kraken REST API
+│   │   └── kraken_ws.rs         # Kraken WebSocket
+│   ├── config.rs                # Configuration types
+│   ├── error.rs                 # Error handling
+│   ├── validation.rs            # Pre-flight validation
+│   └── progress.rs              # Progress bars
+├── config.toml                  # Your configuration
+├── data/
+│   └── grid_bot.db             # SQLite database
+└── strategies/                  # Generated strategies
 ```
 
-## 📈 Strategy Performance
+## Development Status
 
-### Recent Optimizations (Sep 2024)
+**Version**: 0.2.0  
+**Status**: Active Development
 
-- **Period:** 30 days (Aug-Sep 2025)
-- **Pairs:** 20+ GBP pairs
-- **Return:** Varies by pair (see individual strategy files)
-- **Risk:** Max 15% drawdown, 5% daily loss limit
+### Completed (Phases 1-6)
 
-### Risk Management Features
+- ✅ Unified CLI binary
+- ✅ TOML configuration system
+- ✅ SQLite database layer
+- ✅ Custom error types with helpful messages
+- ✅ Pre-flight validation system
+- ✅ Progress bars and UX improvements
 
-- **Position Sizing:** Kelly criterion, risk parity, volatility-adjusted
-- **Risk Limits:** Drawdown limits, position count limits, daily loss limits
-- **Monitoring:** Real-time performance tracking, alert system
-- **Safety:** Emergency shutdown, circuit breakers, graceful degradation
+### In Progress
 
-## 🚨 Important Disclaimers
+- 🔄 Full CLI command integration
+- 🔄 Live trading engine completion
+- 🔄 WebSocket market data streaming
 
-⚠️ **This is experimental software for educational purposes only**
+## Requirements
 
-- **Not Financial Advice:** This software is for research and educational use
-- **Risk Warning:** Cryptocurrency trading involves substantial risk of loss
-- **No Guarantees:** Past performance does not guarantee future results
-- **Use at Your Own Risk:** The authors assume no responsibility for trading losses
+- Rust 1.70+ (2021 edition)
+- Cargo
+- SQLite (bundled)
 
-## 📄 License
+## Dependencies
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+```toml
+clap = "4.0"              # CLI framework
+tokio = "1.0"             # Async runtime
+polars = "0.33"           # Data processing
+rusqlite = "0.31"         # SQLite database
+indicatif = "0.17"        # Progress bars
+reqwest = "0.11"          # HTTP client
+serde = "1.0"             # Serialization
+```
 
-## 🤝 Contributing
+## License
 
-1. Fork the repository
-2. Create a feature branch
-3. Add comprehensive tests
-4. Ensure all tests pass
-5. Submit a pull request
+MIT License - See LICENSE file for details
 
-## 📞 Support
+## Contributing
 
-For questions, issues, or feature requests:
+Contributions welcome! Please open an issue or PR.
 
-- Open an issue on GitHub
-- Check the documentation in `/docs`
-- Review the test files for usage examples
+## Support
 
----
+- GitHub Issues: [Report bugs or request features](https://github.com/cryptomegabyte/grid/issues)
+- Documentation: See `docs/` folder for detailed guides
 
-**Remember: Only trade with money you can afford to lose!**
+## Disclaimer
+
+This software is for educational purposes only. Cryptocurrency trading carries risk. Always test strategies thoroughly before risking real capital.

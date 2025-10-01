@@ -925,15 +925,37 @@ impl LiveTradingEngine {
                     let mut updated_strategy = strategy.clone();
                     self.update_grid_levels(&mut updated_strategy, price_data.last);
                     
-                    // Check for buy/sell triggers
+                    // Log grid levels periodically for debugging (every 60 seconds)
+                    static mut DEBUG_COUNTER: u32 = 0;
+                    unsafe {
+                        DEBUG_COUNTER += 1;
+                        if DEBUG_COUNTER % 600 == 1 {
+                            debug!("🎯 {}: Price £{:.6} | Grid levels: {} | Position: {}", 
+                                pair, price_data.last, updated_strategy.grid_levels.len(), strategy.current_position);
+                        }
+                    }
+                    
+                    // Check for buy/sell triggers - more permissive logic
                     for &level in &updated_strategy.grid_levels {
-                        if level < price_data.last && !self.has_pending_order_at_level(pair, level, "buy") {
-                            if price_data.last * 0.995 <= level {
-                                orders_to_place.push((pair.clone(), "buy".to_string(), level, strategy.available_capital * 0.05));
+                        // Buy when price is below grid level (support)
+                        if level < price_data.last {
+                            let distance_pct = (price_data.last - level) / level;
+                            // Trigger buy if price is within 1% above the level
+                            if distance_pct <= 0.01 && !self.has_pending_order_at_level(pair, level, "buy") {
+                                let order_size = strategy.available_capital * 0.05; // 5% of available capital
+                                if order_size >= 1.0 {
+                                    orders_to_place.push((pair.clone(), "buy".to_string(), level, order_size));
+                                }
                             }
-                        } else if level > price_data.last && !self.has_pending_order_at_level(pair, level, "sell")
-                            && price_data.last * 1.005 >= level && strategy.current_position > 0.0 {
-                                orders_to_place.push((pair.clone(), "sell".to_string(), level, strategy.current_position * 0.2));
+                        } 
+                        // Sell when price is above grid level (resistance) AND we have position
+                        else if level > price_data.last && strategy.current_position > 0.0 {
+                            let distance_pct = (level - price_data.last) / price_data.last;
+                            // Trigger sell if price is within 1% below the level
+                            if distance_pct <= 0.01 && !self.has_pending_order_at_level(pair, level, "sell") {
+                                let order_size = (strategy.current_position * 0.2).max(1.0); // 20% of position, min 1 unit
+                                orders_to_place.push((pair.clone(), "sell".to_string(), level, order_size));
+                            }
                         }
                     }
                 }
@@ -967,7 +989,7 @@ impl LiveTradingEngine {
     async fn place_simulated_order(&mut self, pair: &str, side: &str, price: f64, quantity: f64) {
         // Apply realistic constraints
         if quantity < 1.0 { // Minimum order size
-            debug!("� Order too small: {} units for {}", quantity, pair);
+            debug!("⚠️ Order too small: {:.2} units for {} (min: 1.0)", quantity, pair);
             return;
         }
 
@@ -985,8 +1007,10 @@ impl LiveTradingEngine {
         // Add to strategy's active orders
         if let Some(strategy) = self.strategies.get_mut(pair) {
             strategy.active_orders.push(order.clone());
-            info!("📝 Placed {} order: {} {} @ £{:.6} (ID: {})", 
+            info!("📝 Placed {} order: {:.2} {} @ £{:.6} (ID: {})", 
                   side.to_uppercase(), quantity, pair, price, &order_id[..8]);
+        } else {
+            warn!("⚠️ Strategy not found for {}", pair);
         }
     }
 

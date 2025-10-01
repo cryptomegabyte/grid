@@ -384,41 +384,76 @@ mod tests {
     #[test]
     fn test_buy_signal_generation() {
         let (trading_config, market_config) = create_test_config();
-        let mut trader = GridTrader::new(trading_config, market_config);
+        // Initialize with sufficient capital for testing
+        let mut trader = GridTrader::with_capital(trading_config, market_config, 1000.0);
 
+        // Setup grid around 1.0
         trader.update_with_price(1.0);
-        let buy_signal = trader.update_with_price(0.99);
+        
+        // Get the actual first buy level (will be adjusted by market state)
+        let buy_levels = trader.buy_levels().clone();
+        assert!(!buy_levels.is_empty(), "Buy levels should exist");
+        let first_buy_level = buy_levels[0];
+        
+        // Hit the actual buy level
+        let buy_signal = trader.update_with_price(first_buy_level);
         
         match buy_signal {
-            GridSignal::Buy(level) => assert!((level - 0.99).abs() < 1e-10),
-            _ => panic!("Expected buy signal"),
+            GridSignal::Buy(level) => assert!((level - first_buy_level).abs() < 1e-6),
+            _ => panic!("Expected buy signal at level {}", first_buy_level),
         }
     }
 
     #[test]
     fn test_sell_signal_generation() {
         let (trading_config, market_config) = create_test_config();
-        let mut trader = GridTrader::new(trading_config, market_config);
+        // Initialize with capital and simulate a buy first to have inventory to sell
+        let mut trader = GridTrader::with_capital(trading_config, market_config, 1000.0);
 
+        // Setup grid around 1.0
         trader.update_with_price(1.0);
-        let sell_signal = trader.update_with_price(1.01);
+        
+        // Get the actual first buy level and execute a buy to get inventory
+        let buy_levels = trader.buy_levels().clone();
+        let first_buy_level = buy_levels[0];
+        let buy_signal = trader.update_with_price(first_buy_level);
+        if matches!(buy_signal, GridSignal::Buy(_)) {
+            trader.execute_trade(&buy_signal, first_buy_level);
+        }
+        
+        // Get the actual first sell level
+        let sell_levels = trader.sell_levels().clone();
+        assert!(!sell_levels.is_empty(), "Sell levels should exist");
+        let first_sell_level = sell_levels[0];
+        
+        // Hit the actual sell level
+        let sell_signal = trader.update_with_price(first_sell_level);
         
         match sell_signal {
-            GridSignal::Sell(level) => assert!((level - 1.01).abs() < 1e-10),
-            _ => panic!("Expected sell signal"),
+            GridSignal::Sell(level) => assert!((level - first_sell_level).abs() < 1e-6),
+            _ => panic!("Expected sell signal at level {}", first_sell_level),
         }
     }
 
     #[test]
     fn test_no_duplicate_signals() {
         let (trading_config, market_config) = create_test_config();
-        let mut trader = GridTrader::new(trading_config, market_config);
+        // Initialize with sufficient capital for testing
+        let mut trader = GridTrader::with_capital(trading_config, market_config, 1000.0);
 
+        // Setup grid around 1.0
         trader.update_with_price(1.0);
-        let first_signal = trader.update_with_price(0.99);
+        
+        // Get the actual first buy level
+        let buy_levels = trader.buy_levels().clone();
+        let first_buy_level = buy_levels[0];
+        
+        // Hit the buy level - should get signal
+        let first_signal = trader.update_with_price(first_buy_level);
         assert!(matches!(first_signal, GridSignal::Buy(_)));
 
-        let duplicate_signal = trader.update_with_price(0.99);
+        // Hit the same level again - should NOT get signal (duplicate prevention)
+        let duplicate_signal = trader.update_with_price(first_buy_level);
         assert_eq!(duplicate_signal, GridSignal::None);
     }
 

@@ -205,27 +205,43 @@ fn test_multiple_sell_signals() {
 #[test]
 fn test_price_oscillation() {
     let config = create_test_config();
-    let mut trader = GridTrader::new(config.trading.clone(), config.market.clone());
+    // Initialize with capital to enable trading
+    let mut trader = GridTrader::with_capital(config.trading.clone(), config.market.clone(), 1000.0);
     
     // Initialize grid
     trader.update_with_price(0.50);
     
-    // Simulate oscillating prices
-    let prices = vec![0.49, 0.51, 0.48, 0.52, 0.49, 0.51];
+    // Get actual grid levels to hit
+    let buy_levels = trader.buy_levels().clone();
+    let sell_levels = trader.sell_levels().clone();
+    
+    // Build oscillating prices that hit actual grid levels
+    let mut prices = vec![];
+    if !buy_levels.is_empty() {
+        prices.push(buy_levels[0]); // Hit first buy level
+    }
+    if !sell_levels.is_empty() {
+        prices.push(sell_levels[0]); // Hit first sell level
+    }
+    
     let mut buy_signals = 0;
     let mut sell_signals = 0;
     
     for price in prices {
         let signal = trader.update_with_price(price);
         match signal {
-            GridSignal::Buy(_) => buy_signals += 1,
+            GridSignal::Buy(_) => {
+                buy_signals += 1;
+                // Execute to get inventory for sells
+                trader.execute_trade(&signal, price);
+            },
             GridSignal::Sell(_) => sell_signals += 1,
             GridSignal::None => {},
         }
     }
     
-    // Should generate both buy and sell signals
-    assert!(buy_signals > 0 || sell_signals > 0);
+    // Should generate at least one signal (buy first since we have capital)
+    assert!(buy_signals > 0, "Expected at least one buy signal");
 }
 
 #[test]

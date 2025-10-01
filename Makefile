@@ -11,12 +11,12 @@ help:
 
 backtest:
 	@echo "🎯 Running backtesting optimization..."
-	@cargo run --bin grid-bot -- backtest optimize --limit 10 --iterations 20
+	@cargo run --bin grid-bot -- optimize all --limit 10 --iterations 20
 
 full-workflow:
 	@echo "🎯 Complete Trading Workflow"
 	@echo "📊 Phase 1: Backtesting Optimization"
-	@cargo run --bin grid-bot -- backtest optimize --limit 10 --iterations 20
+	@cargo run --bin grid-bot -- optimize all --limit 10 --iterations 20
 	@echo ""
 	@echo "✅ Optimization complete!"
 	@echo "📡 Phase 2: Simulated Trading (Dry-Run)"

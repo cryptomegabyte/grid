@@ -60,7 +60,7 @@ pub async fn start_trading(
     info!("💰 Capital: £{:.2}", final_capital);
     info!("⚙️  Max position: {:.1}%", config.trading.max_position_size * 100.0);
 
-    let _duration = if let Some(h) = hours {
+    let duration = if let Some(h) = hours {
         Some(Duration::from_secs_f64(h * 3600.0))
     } else if let Some(m) = minutes {
         Some(Duration::from_secs_f64(m * 60.0))
@@ -80,10 +80,53 @@ pub async fn start_trading(
     }
 
     info!("📊 Loaded {} strategies", strategies.len());
-    let _engine = LiveTradingEngine::new(final_capital);
+    
+    // Initialize the trading engine
+    let mut engine = LiveTradingEngine::new(final_capital)
+        .with_simulation_engine(true)
+        .with_real_data(!dry_run);
     
     info!("✅ Engine initialized");
-    warn!("⚠️  Full execution in Phase 3");
+    
+    // Load optimized strategies from the strategies directory
+    info!("📂 Loading optimized strategies from 'strategies' directory...");
+    match engine.load_optimized_strategies(std::path::Path::new("strategies")) {
+        Ok(count) => {
+            info!("✅ Loaded {} optimized strategies", count);
+            if count == 0 {
+                error!("❌ No optimized strategies found!");
+                return Err("No optimized strategies found in strategies directory".into());
+            }
+        }
+        Err(e) => {
+            error!("❌ Failed to load strategies: {}", e);
+            return Err(format!("Failed to load strategies: {}", e).into());
+        }
+    }
+    
+    // Start the trading loop
+    info!("");
+    info!("🚀 Starting trading engine...");
+    if let Some(duration) = duration {
+        info!("⏱️  Duration: {:.1} hours", duration.as_secs_f64() / 3600.0);
+        engine.start_simulation_with_duration(duration).await
+            .map_err(|e| grid_trading_bot::TradingError::from(format!("Trading engine failed: {}", e)))?;
+    } else {
+        info!("⏱️  Duration: Indefinite (press Ctrl+C to stop)");
+        engine.start_simulation().await
+            .map_err(|e| grid_trading_bot::TradingError::from(format!("Trading engine failed: {}", e)))?;
+    }
+    
+    // Display final summary
+    info!("");
+    info!("🏁 Trading session completed");
+    let summary = engine.get_portfolio_summary();
+    info!("📊 Final Summary:");
+    info!("   Total Value: £{:.2}", summary.total_value);
+    info!("   Return: {:+.2}%", summary.total_return);
+    info!("   Total Trades: {}", summary.total_trades);
+    info!("   Total Fees: £{:.2}", summary.total_fees);
+    
     Ok(())
 }
 

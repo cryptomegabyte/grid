@@ -1,0 +1,54 @@
+# Grid Trading Bot Configuration
+# Copy this file to config.toml and fill in your details
+
+[api]
+# Kraken API credentials
+api_key = "YOUR_API_KEY_HERE"
+api_secret = "YOUR_API_SECRET_HERE"
+
+# API endpoints
+rest_url = "https://api.kraken.com"
+ws_url = "wss://ws.kraken.com"
+
+[trading]
+# Default trading parameters
+default_capital = 500.0
+default_grid_levels = 10
+default_grid_spacing = 0.02
+
+# Risk management
+max_position_size = 0.1  # 10% of capital per position
+max_drawdown = 0.20      # 20% maximum drawdown
+stop_loss = 0.05         # 5% stop loss per position
+
+[optimization]
+# Optimization settings
+default_iterations = 100
+default_strategy = "random-search"
+target_metric = "sharpe"
+
+# Parameter ranges
+grid_levels_range = [5, 20]
+grid_spacing_range = [0.01, 0.05]
+
+[backtesting]
+# Backtesting settings
+default_lookback_days = 365
+transaction_fee = 0.0026  # Kraken taker fee
+slippage = 0.001          # 0.1% slippage
+
+[monitoring]
+# Monitoring and alerts
+check_interval_seconds = 60
+alert_on_error = true
+alert_on_large_drawdown = true
+
+# Logging
+log_level = "info"
+log_to_file = true
+log_directory = "logs"
+
+[database]
+# Database settings (future use)
+db_path = "data/grid_bot.db"
+backup_interval_hours = 24

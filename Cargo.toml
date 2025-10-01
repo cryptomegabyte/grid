@@ -1,8 +1,14 @@
 [package]
 name = "grid-trading-bot"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
+# New unified binary
+[[bin]]
+name = "grid-bot"
+path = "src/bin/grid-bot.rs"
+
+# Legacy binaries (deprecated)
 [[bin]]
 name = "backtest"
 path = "src/bin/backtest.rs"

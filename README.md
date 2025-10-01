@@ -2,7 +2,35 @@
 
 A high-performance cryptocurrency grid trading system built in Rust with vectorized backtesting, automatic strategy generation, and professional-grade architecture.
 
-## 🚀 Quick Start
+## ⚡ New Unified CLI (v0.2.0)
+
+The bot now features a single professional command-line interface:
+
+```bash
+# Initialize workspace
+./target/debug/grid-bot init
+
+# Check system status
+./target/debug/grid-bot status
+
+# List available strategies
+./target/debug/grid-bot strategy list
+
+# Optimize all pairs (Phase 2 - coming soon)
+./target/debug/grid-bot optimize all --iterations 20
+
+# Start paper trading (Phase 2 - coming soon)
+./target/debug/grid-bot trade start --dry-run
+
+# See all commands
+./target/debug/grid-bot --help
+```
+
+**Note**: Full command integration is in progress. For now, use the legacy binaries for optimization and trading:
+- **Optimization**: `cargo run --bin backtest -- optimize-gbp`
+- **Trading**: `cargo run --bin trade start`
+
+## 🚀 Quick Start (Legacy Binaries)
 
 ### 1. Autonomous Strategy Optimization
 

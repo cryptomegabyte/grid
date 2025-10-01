@@ -8,7 +8,7 @@ pub async fn optimize_all_pairs(
     iterations: usize,
     _report: bool,
     config: &CliConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> grid_trading_bot::TradingResult<()> {
     info!("🔍 Optimizing GBP pairs with config...");
     info!("   Strategy: {}", strategy);
     info!("   Iterations: {}", iterations);
@@ -29,14 +29,14 @@ pub async fn optimize_single_pair(
     _iterations: usize,
     _comprehensive: bool,
     config: &CliConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> grid_trading_bot::TradingResult<()> {
     info!("🎯 Optimizing {} with config", pair);
     info!("   Grid range: {:?}", config.optimization.grid_levels_range);
     warn!("⚠️  For now: cargo run --bin backtest -- optimize-pair --pair {}", pair);
     Ok(())
 }
 
-pub async fn run_demo_backtest(pair: &str, config: &CliConfig) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_demo_backtest(pair: &str, config: &CliConfig) -> grid_trading_bot::TradingResult<()> {
     info!("🚀 Demo backtest for {}", pair);
     info!("   Capital: £{:.2}", config.trading.default_capital);
     warn!("⚠️  For now: cargo run --bin backtest -- demo");
@@ -47,7 +47,7 @@ pub async fn scan_pairs(
     _limit: Option<usize>,
     _report: bool,
     config: &CliConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> grid_trading_bot::TradingResult<()> {
     info!("🔍 Scanning pairs...");
     info!("   Lookback: {} days", config.backtesting.default_lookback_days);
     warn!("⚠️  For now: cargo run --bin backtest -- list");
@@ -61,7 +61,7 @@ pub async fn run_custom_backtest(
     levels: Option<usize>,
     spacing: Option<f64>,
     config: &CliConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> grid_trading_bot::TradingResult<()> {
     info!("🎯 Custom backtest for {}", pair);
     let final_levels = levels.unwrap_or(config.trading.default_grid_levels);
     let final_spacing = spacing.unwrap_or(config.trading.default_grid_spacing);

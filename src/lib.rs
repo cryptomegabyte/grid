@@ -7,11 +7,15 @@ pub mod clients;
 pub mod config;
 pub mod cli_config;  // New CLI-specific configuration
 pub mod db;          // SQLite database layer
+pub mod error;       // Unified error handling
 pub mod backtesting;
 pub mod optimization;
 
 // Re-export core trading types
 pub use core::{MarketState, GridSignal, GridTrader, MarketAnalyzer};
+
+// Re-export error types
+pub use error::{TradingError, TradingResult};
 
 // Re-export client types
 pub use clients::{KrakenWebSocketClient, KrakenHistoricalClient};

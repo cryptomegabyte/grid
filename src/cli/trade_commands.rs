@@ -23,7 +23,7 @@ pub async fn start_trading(
     pairs: Option<String>,
     dry_run: bool,
     config: &CliConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> grid_trading_bot::TradingResult<()> {
     use grid_trading_bot::core::LiveTradingEngine;
     use std::time::Duration;
 
@@ -70,22 +70,22 @@ pub async fn start_trading(
     Ok(())
 }
 
-pub async fn stop_trading(_force: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn stop_trading(_force: bool) -> grid_trading_bot::TradingResult<()> {
     info!("🛑 Stopping...");
     Ok(())
 }
 
-pub async fn pause_trading() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn pause_trading() -> grid_trading_bot::TradingResult<()> {
     info!("⏸️  Pausing...");
     Ok(())
 }
 
-pub async fn resume_trading() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn resume_trading() -> grid_trading_bot::TradingResult<()> {
     info!("▶️  Resuming...");
     Ok(())
 }
 
-fn load_all_strategies() -> Result<Vec<SimpleStrategy>, Box<dyn std::error::Error>> {
+fn load_all_strategies() -> Result<Vec<SimpleStrategy>, grid_trading_bot::TradingError> {
     let dir = "strategies";
     if !Path::new(dir).exists() {
         return Err("Strategies dir not found".into());
@@ -104,7 +104,7 @@ fn load_all_strategies() -> Result<Vec<SimpleStrategy>, Box<dyn std::error::Erro
     Ok(strats)
 }
 
-fn load_specific_strategies(pairs: &str) -> Result<Vec<SimpleStrategy>, Box<dyn std::error::Error>> {
+fn load_specific_strategies(pairs: &str) -> Result<Vec<SimpleStrategy>, grid_trading_bot::TradingError> {
     let mut strats = Vec::new();
     for pair in pairs.split(',').map(|s| s.trim()) {
         let file = format!("strategies/{}_optimized.json", pair.to_lowercase());
@@ -117,7 +117,7 @@ fn load_specific_strategies(pairs: &str) -> Result<Vec<SimpleStrategy>, Box<dyn 
     Ok(strats)
 }
 
-fn load_strategy(path: &Path) -> Result<SimpleStrategy, Box<dyn std::error::Error>> {
+fn load_strategy(path: &Path) -> Result<SimpleStrategy, grid_trading_bot::TradingError> {
     let content = fs::read_to_string(path)?;
     Ok(serde_json::from_str(&content)?)
 }

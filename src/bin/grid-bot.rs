@@ -3,7 +3,7 @@
 
 use clap::{Parser, Subcommand};
 use tracing::{info, warn, error};
-use grid_trading_bot::{CliConfig, CliConfigError};
+use grid_trading_bot::{CliConfig, TradingError, TradingResult};
 
 // Load command modules from cli directory
 #[path = "../cli/backtest_commands.rs"]
@@ -225,7 +225,7 @@ enum StrategyCommands {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> TradingResult<()> {
     let cli = Cli::parse();
     
     // Setup logging first (before config load so we can see config errors)
@@ -274,27 +274,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Load config or exit with helpful error message
-fn load_config_or_exit(path: &str) -> Result<CliConfig, Box<dyn std::error::Error>> {
+fn load_config_or_exit(path: &str) -> TradingResult<CliConfig> {
     match CliConfig::load_or_error(path) {
         Ok(config) => Ok(config),
         Err(e) => {
-            error!("❌ Configuration Error");
-            error!("{}", e);
-            
-            if matches!(e, CliConfigError::FileNotFound(_)) {
-                error!("");
-                error!("💡 Quick fix:");
-                error!("   1. Run: grid-bot init");
-                error!("   2. Edit config.toml with your API keys");
-                error!("   3. Try again");
-            }
-            
+            let trading_err: TradingError = e.into();
+            error!("❌ {}", trading_err.category().to_uppercase());
+            error!("{}", trading_err.user_message());
             std::process::exit(1);
         }
     }
 }
 
-async fn init_workspace(no_examples: bool, config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn init_workspace(no_examples: bool, config_path: &str) -> TradingResult<()> {
     use std::fs;
     use grid_trading_bot::{Database, StrategyService};
     
@@ -339,7 +331,7 @@ async fn init_workspace(no_examples: bool, config_path: &str) -> Result<(), Box<
 async fn handle_optimize_command(
     cmd: OptimizeCommands,
     config: CliConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> TradingResult<()> {
     match cmd {
         OptimizeCommands::All { limit, strategy, iterations, report } => {
             backtest_commands::optimize_all_pairs(limit, &strategy, iterations, report, &config).await?;
@@ -354,7 +346,7 @@ async fn handle_optimize_command(
 async fn handle_backtest_command(
     cmd: BacktestCommands,
     config: CliConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> TradingResult<()> {
     match cmd {
         BacktestCommands::Demo { pair } => {
             backtest_commands::run_demo_backtest(&pair, &config).await?;
@@ -372,7 +364,7 @@ async fn handle_backtest_command(
 async fn handle_trade_command(
     cmd: TradeCommands,
     config: CliConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> TradingResult<()> {
     match cmd {
         TradeCommands::Start { capital, hours, minutes, pairs, dry_run } => {
             trade_commands::start_trading(capital, hours, minutes, pairs, dry_run, &config).await?;
@@ -393,7 +385,7 @@ async fn handle_trade_command(
 async fn handle_strategy_command(
     cmd: StrategyCommands,
     _config: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> TradingResult<()> {
     match cmd {
         StrategyCommands::List { detailed } => {
             list_strategies(detailed).await?;
@@ -414,7 +406,7 @@ async fn handle_strategy_command(
     Ok(())
 }
 
-async fn show_status(_detailed: bool, _config: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn show_status(_detailed: bool, _config: &str) -> TradingResult<()> {
     use std::fs;
     use grid_trading_bot::{Database, StrategyService};
     
@@ -470,7 +462,7 @@ async fn show_status(_detailed: bool, _config: &str) -> Result<(), Box<dyn std::
     Ok(())
 }
 
-async fn list_strategies(detailed: bool) -> Result<(), Box<dyn std::error::Error>> {
+async fn list_strategies(detailed: bool) -> TradingResult<()> {
     use std::fs;
     use grid_trading_bot::{Database, StrategyService};
     
@@ -522,7 +514,7 @@ async fn list_strategies(detailed: bool) -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
-fn display_strategies(strategies: &[grid_trading_bot::Strategy], detailed: bool) -> Result<(), Box<dyn std::error::Error>> {
+fn display_strategies(strategies: &[grid_trading_bot::Strategy], detailed: bool) -> TradingResult<()> {
     for (idx, strategy) in strategies.iter().enumerate() {
         if detailed {
             info!("  {} - {}", idx + 1, strategy.pair);
@@ -541,7 +533,7 @@ fn display_strategies(strategies: &[grid_trading_bot::Strategy], detailed: bool)
     Ok(())
 }
 
-fn list_json_strategies(detailed: bool) -> Result<(), Box<dyn std::error::Error>> {
+fn list_json_strategies(detailed: bool) -> TradingResult<()> {
     use std::fs;
     
     info!("📋 Available Strategies");
@@ -590,7 +582,7 @@ fn list_json_strategies(detailed: bool) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-async fn validate_strategy(file: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn validate_strategy(file: &str) -> TradingResult<()> {
     use std::fs;
     use serde_json::Value;
     
@@ -622,7 +614,7 @@ async fn validate_strategy(file: &str) -> Result<(), Box<dyn std::error::Error>>
     Ok(())
 }
 
-async fn export_strategies(output: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn export_strategies(output: &str) -> TradingResult<()> {
     use std::fs;
     
     info!("📦 Exporting strategies to: {}", output);
@@ -647,7 +639,7 @@ async fn export_strategies(output: &str) -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
-async fn import_strategies(input: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn import_strategies(input: &str) -> TradingResult<()> {
     use std::fs;
     
     info!("📥 Importing strategies from: {}", input);
@@ -672,7 +664,7 @@ async fn import_strategies(input: &str) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-async fn clean_strategies(days: u32, dry_run: bool) -> Result<(), Box<dyn std::error::Error>> {
+async fn clean_strategies(days: u32, dry_run: bool) -> TradingResult<()> {
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
     

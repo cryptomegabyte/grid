@@ -30,7 +30,7 @@ impl StrategyService {
     }
 
     /// Migrate JSON strategy files to database
-    pub fn migrate_json_strategies(&self) -> Result<usize, Box<dyn std::error::Error>> {
+    pub fn migrate_json_strategies(&self) -> Result<usize, crate::error::TradingError> {
         let mut migrated = 0;
         
         if !Path::new(&self.strategies_dir).exists() {
@@ -71,7 +71,7 @@ impl StrategyService {
     }
 
     /// Convert JSON strategy file to Strategy struct
-    fn json_to_strategy(&self, json: &Value) -> Result<Strategy, Box<dyn std::error::Error>> {
+    fn json_to_strategy(&self, json: &Value) -> Result<Strategy, crate::error::TradingError> {
         let pair = json.get("trading_pair")
             .and_then(|v| v.as_str())
             .ok_or("Missing trading_pair")?
@@ -171,7 +171,7 @@ impl StrategyService {
     }
 
     /// Export strategy to JSON file (for backwards compatibility)
-    pub fn export_to_json(&self, strategy: &Strategy, output_dir: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn export_to_json(&self, strategy: &Strategy, output_dir: &str) -> Result<String, crate::error::TradingError> {
         fs::create_dir_all(output_dir)?;
         
         let filename = format!("{}/{}_strategy.json", output_dir, strategy.pair.to_lowercase());

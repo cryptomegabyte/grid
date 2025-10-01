@@ -2,7 +2,8 @@
 // Single entry point for all grid trading operations
 
 use clap::{Parser, Subcommand};
-use tracing::info;
+use tracing::{info, warn, error};
+use grid_trading_bot::{CliConfig, CliConfigError};
 
 // Load command modules from cli directory
 #[path = "../cli/backtest_commands.rs"]
@@ -149,7 +150,7 @@ enum TradeCommands {
     /// Start live trading
     Start {
         /// Initial capital
-        #[arg(short, long, default_value = "500")]
+        #[arg(long, default_value = "500")]
         capital: f64,
         
         /// Trading duration in hours
@@ -227,7 +228,7 @@ enum StrategyCommands {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     
-    // Setup logging
+    // Setup logging first (before config load so we can see config errors)
     let log_level = if cli.verbose { "debug" } else { "info" };
     std::env::set_var("RUST_LOG", log_level);
     tracing_subscriber::fmt::init();
@@ -237,35 +238,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Execute command
     match cli.command {
+        // Init doesn't require config (it creates it)
         Commands::Init { no_examples } => {
-            init_workspace(no_examples).await?;
+            init_workspace(no_examples, &cli.config).await?;
         }
         
-        Commands::Optimize(cmd) => {
-            handle_optimize_command(cmd, &cli.config).await?;
+        // Status can work without full config validation
+        Commands::Status { detailed } => {
+            show_status(detailed, &cli.config).await?;
         }
         
-        Commands::Backtest(cmd) => {
-            handle_backtest_command(cmd, &cli.config).await?;
-        }
-        
-        Commands::Trade(cmd) => {
-            handle_trade_command(cmd, &cli.config).await?;
-        }
-        
+        // Strategy commands work with or without config
         Commands::Strategy(cmd) => {
             handle_strategy_command(cmd, &cli.config).await?;
         }
         
-        Commands::Status { detailed } => {
-            show_status(detailed, &cli.config).await?;
+        // All other commands require valid config
+        Commands::Optimize(cmd) => {
+            let config = load_config_or_exit(&cli.config)?;
+            handle_optimize_command(cmd, config).await?;
+        }
+        
+        Commands::Backtest(cmd) => {
+            let config = load_config_or_exit(&cli.config)?;
+            handle_backtest_command(cmd, config).await?;
+        }
+        
+        Commands::Trade(cmd) => {
+            let config = load_config_or_exit(&cli.config)?;
+            handle_trade_command(cmd, config).await?;
         }
     }
     
     Ok(())
 }
 
-async fn init_workspace(no_examples: bool) -> Result<(), Box<dyn std::error::Error>> {
+/// Load config or exit with helpful error message
+fn load_config_or_exit(path: &str) -> Result<CliConfig, Box<dyn std::error::Error>> {
+    match CliConfig::load_or_error(path) {
+        Ok(config) => Ok(config),
+        Err(e) => {
+            error!("❌ Configuration Error");
+            error!("{}", e);
+            
+            if matches!(e, CliConfigError::FileNotFound(_)) {
+                error!("");
+                error!("💡 Quick fix:");
+                error!("   1. Run: grid-bot init");
+                error!("   2. Edit config.toml with your API keys");
+                error!("   3. Try again");
+            }
+            
+            std::process::exit(1);
+        }
+    }
+}
+
+async fn init_workspace(no_examples: bool, config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     use std::fs;
     
     info!("🔧 Initializing workspace...");
@@ -276,10 +305,12 @@ async fn init_workspace(no_examples: bool) -> Result<(), Box<dyn std::error::Err
     fs::create_dir_all("data")?;
     
     // Create default config if it doesn't exist
-    if !std::path::Path::new("config.toml").exists() {
+    if !std::path::Path::new(config_path).exists() {
         let default_config = include_str!("../../config.toml.example");
-        fs::write("config.toml", default_config)?;
-        info!("📝 Created config.toml");
+        fs::write(config_path, default_config)?;
+        info!("📝 Created {}", config_path);
+    } else {
+        warn!("⚠️  {} already exists, skipping", config_path);
     }
     
     // Create example strategies if requested
@@ -299,14 +330,14 @@ async fn init_workspace(no_examples: bool) -> Result<(), Box<dyn std::error::Err
 
 async fn handle_optimize_command(
     cmd: OptimizeCommands,
-    _config: &str,
+    config: CliConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match cmd {
         OptimizeCommands::All { limit, strategy, iterations, report } => {
-            backtest_commands::optimize_all_pairs(limit, &strategy, iterations, report).await?;
+            backtest_commands::optimize_all_pairs(limit, &strategy, iterations, report, &config).await?;
         }
         OptimizeCommands::Pair { pair, strategy, iterations, comprehensive } => {
-            backtest_commands::optimize_single_pair(&pair, &strategy, iterations, comprehensive).await?;
+            backtest_commands::optimize_single_pair(&pair, &strategy, iterations, comprehensive, &config).await?;
         }
     }
     Ok(())
@@ -314,17 +345,17 @@ async fn handle_optimize_command(
 
 async fn handle_backtest_command(
     cmd: BacktestCommands,
-    _config: &str,
+    config: CliConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match cmd {
         BacktestCommands::Demo { pair } => {
-            backtest_commands::run_demo_backtest(&pair).await?;
+            backtest_commands::run_demo_backtest(&pair, &config).await?;
         }
         BacktestCommands::Scan { limit, report } => {
-            backtest_commands::scan_pairs(limit, report).await?;
+            backtest_commands::scan_pairs(limit, report, &config).await?;
         }
         BacktestCommands::Run { pair, start, end, levels, spacing } => {
-            backtest_commands::run_custom_backtest(&pair, start, end, levels, spacing).await?;
+            backtest_commands::run_custom_backtest(&pair, start, end, levels, spacing, &config).await?;
         }
     }
     Ok(())
@@ -332,11 +363,11 @@ async fn handle_backtest_command(
 
 async fn handle_trade_command(
     cmd: TradeCommands,
-    _config: &str,
+    config: CliConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match cmd {
         TradeCommands::Start { capital, hours, minutes, pairs, dry_run } => {
-            trade_commands::start_trading(capital, hours, minutes, pairs, dry_run).await?;
+            trade_commands::start_trading(capital, hours, minutes, pairs, dry_run, &config).await?;
         }
         TradeCommands::Stop { force } => {
             trade_commands::stop_trading(force).await?;

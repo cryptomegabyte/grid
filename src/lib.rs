@@ -5,6 +5,7 @@
 pub mod core;
 pub mod clients;
 pub mod config;
+pub mod cli_config;  // New CLI-specific configuration
 pub mod backtesting;
 pub mod optimization;
 
@@ -16,6 +17,9 @@ pub use clients::{KrakenWebSocketClient, KrakenHistoricalClient};
 
 // Re-export configuration
 pub use config::{Config, TradingConfig, MarketConfig, LoggingConfig, ConfigError};
+
+// Re-export CLI configuration
+pub use cli_config::{CliConfig, CliConfigError, ApiConfig, TradingDefaults, OptimizationConfig as CliOptimizationConfig};
 
 // Re-export backtesting components
 pub use backtesting::{

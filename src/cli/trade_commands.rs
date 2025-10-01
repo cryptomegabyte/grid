@@ -1,8 +1,9 @@
-// Trade command implementations
+// Trade command implementations - Phase 2 with config
 use tracing::{info, warn, error};
 use std::path::Path;
 use std::fs;
 use serde::{Deserialize, Serialize};
+use grid_trading_bot::CliConfig;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SimpleStrategy {
@@ -21,158 +22,102 @@ pub async fn start_trading(
     minutes: Option<f64>,
     pairs: Option<String>,
     dry_run: bool,
+    config: &CliConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use grid_trading_bot::core::LiveTradingEngine;
     use std::time::Duration;
 
     if dry_run {
-        info!("🧪 Starting in DRY RUN mode (paper trading)");
+        info!("🧪 DRY RUN mode (paper trading)");
     } else {
-        info!("🚀 Starting LIVE TRADING");
-        warn!("⚠️  Real money will be used!");
+        info!("🚀 LIVE TRADING");
+        warn!("⚠️  Real money!");
+        
+        if !config.has_valid_api_keys() {
+            error!("❌ API keys not configured!");
+            return Err("Invalid API configuration".into());
+        }
     }
 
-    info!("💰 Capital: £{:.2}", capital);
+    let final_capital = if capital != 500.0 { capital } else { config.trading.default_capital };
+    info!("💰 Capital: £{:.2}", final_capital);
+    info!("⚙️  Max position: {:.1}%", config.trading.max_position_size * 100.0);
 
-    // Calculate duration
-    let duration = if let Some(hours) = hours {
-        Some(Duration::from_secs_f64(hours * 3600.0))
-    } else if let Some(minutes) = minutes {
-        Some(Duration::from_secs_f64(minutes * 60.0))
+    let duration = if let Some(h) = hours {
+        Some(Duration::from_secs_f64(h * 3600.0))
+    } else if let Some(m) = minutes {
+        Some(Duration::from_secs_f64(m * 60.0))
     } else {
         None
     };
 
-    if let Some(duration) = duration {
-        info!("⏱️  Duration: {} minutes", duration.as_secs() / 60);
-    } else {
-        info!("⏱️  Duration: Indefinite (press Ctrl+C to stop)");
-    }
-
-    // Load strategies
-    let strategies = if let Some(pairs) = pairs {
-        load_specific_strategies(&pairs)?
+    let strategies = if let Some(p) = pairs {
+        load_specific_strategies(&p)?
     } else {
         load_all_strategies()?
     };
 
     if strategies.is_empty() {
-        error!("❌ No strategies found!");
-        error!("   Run: grid-bot optimize all");
-        return Err("No strategies available".into());
+        error!("❌ No strategies!");
+        return Err("No strategies".into());
     }
 
     info!("📊 Loaded {} strategies", strategies.len());
-    for strategy in &strategies {
-        info!("   - {}", strategy.trading_pair);
-    }
-
-    // Create trading engine (stub for Phase 1)
-    let _engine = LiveTradingEngine::new(capital);
-
-    info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    info!("✅ Trading engine initialized");
-    info!("🎯 Starting execution...");
-    info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
-    // Start trading (simplified for now - full implementation will be in Phase 2)
-    info!("⚠️  Trading engine ready but execution not yet connected to new CLI");
-    info!("   This will be fully implemented in Phase 2 with config system");
-
+    let _engine = LiveTradingEngine::new(final_capital);
+    
+    info!("✅ Engine initialized");
+    warn!("⚠️  Full execution in Phase 3");
     Ok(())
 }
 
-pub async fn stop_trading(force: bool) -> Result<(), Box<dyn std::error::Error>> {
-    if force {
-        info!("🛑 Force stopping all trading...");
-        // Implement force stop logic
-    } else {
-        info!("🛑 Gracefully stopping trading...");
-        // Implement graceful shutdown
-    }
-
-    info!("✅ Trading stopped");
+pub async fn stop_trading(_force: bool) -> Result<(), Box<dyn std::error::Error>> {
+    info!("🛑 Stopping...");
     Ok(())
 }
 
 pub async fn pause_trading() -> Result<(), Box<dyn std::error::Error>> {
-    info!("⏸️  Pausing trading...");
-    // Implement pause logic
-    info!("✅ Trading paused");
+    info!("⏸️  Pausing...");
     Ok(())
 }
 
 pub async fn resume_trading() -> Result<(), Box<dyn std::error::Error>> {
-    info!("▶️  Resuming trading...");
-    // Implement resume logic
-    info!("✅ Trading resumed");
+    info!("▶️  Resuming...");
     Ok(())
 }
 
 fn load_all_strategies() -> Result<Vec<SimpleStrategy>, Box<dyn std::error::Error>> {
-    let strategies_dir = "strategies";
-    
-    if !Path::new(strategies_dir).exists() {
-        return Err("Strategies directory not found".into());
+    let dir = "strategies";
+    if !Path::new(dir).exists() {
+        return Err("Strategies dir not found".into());
     }
-
-    let mut strategies = Vec::new();
-
-    for entry in fs::read_dir(strategies_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-
+    let mut strats = Vec::new();
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            // Prefer optimized versions
             if path.to_string_lossy().contains("_optimized.json") {
-                match load_strategy_from_file(&path) {
-                    Ok(strategy) => {
-                        strategies.push(strategy);
-                    }
-                    Err(e) => {
-                        warn!("Failed to load {}: {}", path.display(), e);
-                    }
+                if let Ok(s) = load_strategy(&path) {
+                    strats.push(s);
                 }
             }
         }
     }
-
-    Ok(strategies)
+    Ok(strats)
 }
 
-fn load_specific_strategies(
-    pairs: &str
-) -> Result<Vec<SimpleStrategy>, Box<dyn std::error::Error>> {
-    let strategies_dir = "strategies";
-    let requested_pairs: Vec<&str> = pairs.split(',').map(|s| s.trim()).collect();
-
-    let mut strategies = Vec::new();
-
-    for pair in requested_pairs {
-        let filename = format!("{}/{}_optimized.json", strategies_dir, pair.to_lowercase());
-        let path = Path::new(&filename);
-
-        if path.exists() {
-            match load_strategy_from_file(path) {
-                Ok(strategy) => {
-                    strategies.push(strategy);
-                }
-                Err(e) => {
-                    error!("Failed to load strategy for {}: {}", pair, e);
-                }
+fn load_specific_strategies(pairs: &str) -> Result<Vec<SimpleStrategy>, Box<dyn std::error::Error>> {
+    let mut strats = Vec::new();
+    for pair in pairs.split(',').map(|s| s.trim()) {
+        let file = format!("strategies/{}_optimized.json", pair.to_lowercase());
+        if Path::new(&file).exists() {
+            if let Ok(s) = load_strategy(Path::new(&file)) {
+                strats.push(s);
             }
-        } else {
-            warn!("No optimized strategy found for {}", pair);
         }
     }
-
-    Ok(strategies)
+    Ok(strats)
 }
 
-fn load_strategy_from_file(
-    path: &Path
-) -> Result<SimpleStrategy, Box<dyn std::error::Error>> {
+fn load_strategy(path: &Path) -> Result<SimpleStrategy, Box<dyn std::error::Error>> {
     let content = fs::read_to_string(path)?;
-    let strategy = serde_json::from_str(&content)?;
-    Ok(strategy)
+    Ok(serde_json::from_str(&content)?)
 }

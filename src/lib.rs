@@ -6,6 +6,7 @@ pub mod core;
 pub mod clients;
 pub mod config;
 pub mod cli_config;  // New CLI-specific configuration
+pub mod db;          // SQLite database layer
 pub mod backtesting;
 pub mod optimization;
 
@@ -20,6 +21,9 @@ pub use config::{Config, TradingConfig, MarketConfig, LoggingConfig, ConfigError
 
 // Re-export CLI configuration
 pub use cli_config::{CliConfig, CliConfigError, ApiConfig, TradingDefaults, OptimizationConfig as CliOptimizationConfig};
+
+// Re-export database types
+pub use db::{Database, Strategy, Trade as DbTrade, ExecutionHistory, StrategyService};
 
 // Re-export backtesting components
 pub use backtesting::{

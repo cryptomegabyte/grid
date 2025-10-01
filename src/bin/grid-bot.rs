@@ -296,6 +296,7 @@ fn load_config_or_exit(path: &str) -> Result<CliConfig, Box<dyn std::error::Erro
 
 async fn init_workspace(no_examples: bool, config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     use std::fs;
+    use grid_trading_bot::{Database, StrategyService};
     
     info!("🔧 Initializing workspace...");
     
@@ -303,6 +304,13 @@ async fn init_workspace(no_examples: bool, config_path: &str) -> Result<(), Box<
     fs::create_dir_all("strategies")?;
     fs::create_dir_all("logs")?;
     fs::create_dir_all("data")?;
+    
+    // Initialize database
+    info!("💾 Initializing database...");
+    let db = Database::new("data/grid_bot.db")?;
+    let strategy_service = StrategyService::new(db, "strategies".to_string());
+    strategy_service.init(false)?; // Don't migrate yet, just create schema
+    info!("✅ Database initialized");
     
     // Create default config if it doesn't exist
     if !std::path::Path::new(config_path).exists() {
@@ -408,9 +416,31 @@ async fn handle_strategy_command(
 
 async fn show_status(_detailed: bool, _config: &str) -> Result<(), Box<dyn std::error::Error>> {
     use std::fs;
+    use grid_trading_bot::{Database, StrategyService};
     
     info!("📊 System Status");
     info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    
+    // Check database
+    if std::path::Path::new("data/grid_bot.db").exists() {
+        match Database::new("data/grid_bot.db") {
+            Ok(db) => {
+                match db.health_check() {
+                    Ok(true) => {
+                        let strategy_service = StrategyService::new(db, "strategies".to_string());
+                        match strategy_service.count() {
+                            Ok(count) => info!("💾 Database: OK ({} strategies)", count),
+                            Err(_) => info!("💾 Database: OK (health check passed)"),
+                        }
+                    }
+                    _ => info!("💾 Database: UNHEALTHY"),
+                }
+            }
+            Err(_) => info!("💾 Database: ERROR"),
+        }
+    } else {
+        info!("💾 Database: NOT INITIALIZED (run: grid-bot init)");
+    }
     
     // Check strategies directory
     if let Ok(entries) = fs::read_dir("strategies") {
@@ -441,6 +471,77 @@ async fn show_status(_detailed: bool, _config: &str) -> Result<(), Box<dyn std::
 }
 
 async fn list_strategies(detailed: bool) -> Result<(), Box<dyn std::error::Error>> {
+    use std::fs;
+    use grid_trading_bot::{Database, StrategyService};
+    
+    info!("📋 Available Strategies");
+    info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    
+    // Try to use database first
+    if std::path::Path::new("data/grid_bot.db").exists() {
+        let db = Database::new("data/grid_bot.db")?;
+        let strategy_service = StrategyService::new(db, "strategies".to_string());
+        
+        let strategies = strategy_service.list_active()?;
+        
+        if strategies.is_empty() {
+            // Check if we need to migrate JSON files
+            if let Ok(entries) = fs::read_dir("strategies") {
+                let json_count = entries
+                    .filter_map(|e| e.ok())
+                    .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("json"))
+                    .count();
+                
+                if json_count > 0 {
+                    info!("💡 Found {} JSON strategy files", json_count);
+                    info!("   Migrating to database...");
+                    let migrated = strategy_service.migrate_json_strategies()?;
+                    info!("✅ Migrated {} strategies to database", migrated);
+                    
+                    // Reload strategies
+                    let strategies = strategy_service.list_active()?;
+                    display_strategies(&strategies, detailed)?;
+                    info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    info!("Total: {} strategies", strategies.len());
+                    return Ok(());
+                }
+            }
+            
+            info!("  No strategies found. Run: grid-bot optimize all");
+        } else {
+            display_strategies(&strategies, detailed)?;
+            info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            info!("Total: {} strategies", strategies.len());
+        }
+    } else {
+        // Fallback to JSON files if database doesn't exist
+        warn!("⚠️  Database not initialized. Run: grid-bot init");
+        list_json_strategies(detailed)?;
+    }
+    
+    Ok(())
+}
+
+fn display_strategies(strategies: &[grid_trading_bot::Strategy], detailed: bool) -> Result<(), Box<dyn std::error::Error>> {
+    for (idx, strategy) in strategies.iter().enumerate() {
+        if detailed {
+            info!("  {} - {}", idx + 1, strategy.pair);
+            info!("    Name: {}", strategy.name);
+            info!("    Grid Levels: {}", strategy.grid_levels);
+            info!("    Grid Spacing: {:.4}", strategy.grid_spacing);
+            info!("    Price Range: £{:.4} - £{:.4}", strategy.lower_price, strategy.upper_price);
+            info!("    Capital: £{:.2}", strategy.capital);
+            if let Some(created) = &strategy.created_at {
+                info!("    Created: {}", created);
+            }
+        } else {
+            info!("  {} - {} ({})", idx + 1, strategy.pair, strategy.name);
+        }
+    }
+    Ok(())
+}
+
+fn list_json_strategies(detailed: bool) -> Result<(), Box<dyn std::error::Error>> {
     use std::fs;
     
     info!("📋 Available Strategies");
